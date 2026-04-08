@@ -2,13 +2,13 @@
 
 ## Stack
 
-| Concern | Choice | Why |
-|---|---|---|
-| Desktop shell | **Tauri 2** (Rust + WKWebView) | ~8MB binary vs Electron's ~200MB; uses macOS system WebView |
-| UI framework | **Svelte 5** | ~20KB runtime, no virtual DOM overhead |
-| Editor core | **TipTap 2** (ProseMirror) | Enables seamless mode natively |
-| Testing | **Vitest** (unit) + **Playwright** (e2e) | |
-| CI/CD | **GitHub Actions** | |
+| Concern       | Choice                                   | Why                                                         |
+| ------------- | ---------------------------------------- | ----------------------------------------------------------- |
+| Desktop shell | **Tauri 2** (Rust + WKWebView)           | ~8MB binary vs Electron's ~200MB; uses macOS system WebView |
+| UI framework  | **Svelte 5**                             | ~20KB runtime, no virtual DOM overhead                      |
+| Editor core   | **TipTap 2** (ProseMirror)               | Enables seamless mode natively                              |
+| Testing       | **Vitest** (unit) + **Playwright** (e2e) |                                                             |
+| CI/CD         | **GitHub Actions**                       |                                                             |
 
 ## On Seamless Mode
 
@@ -50,15 +50,15 @@ Markdown Editor
 
 ## Schedule
 
-| Phase | Days | Focus |
-|---|---|---|
-| 0 — Foundation | 1–3 | Scaffold, CI (+Cargo cache), test infra, app shell |
-| 1 — Core Editor | 4–6 | TipTap (+link interception), seamless rendering, source toggle (+undo note) |
-| 2 — File System | 7–9 | Capabilities config, open, new file, save, quit dialog, recent files |
-| 3 — Outline Sidebar | 10–11 | Heading extraction, navigation, active highlight |
-| 4 — Polish | 12–14 | Shortcuts, macOS menu bar, theme, distraction-free, font size |
-| 5 — Core gaps | 15–16 | Find & replace, image paste/drop + asset:// resolution |
-| 6 — Hardening & Release | 17–19 | Coverage, packaging, memory audit (Rust-side) |
+| Phase                   | Days  | Focus                                                                       |
+| ----------------------- | ----- | --------------------------------------------------------------------------- |
+| 0 — Foundation          | 1–3   | Scaffold, CI (+Cargo cache), test infra, app shell                          |
+| 1 — Core Editor         | 4–6   | TipTap (+link interception), seamless rendering, source toggle (+undo note) |
+| 2 — File System         | 7–9   | Capabilities config, open, new file, save, quit dialog, recent files        |
+| 3 — Outline Sidebar     | 10–11 | Heading extraction, navigation, active highlight                            |
+| 4 — Polish              | 12–14 | Shortcuts, macOS menu bar, theme, distraction-free, font size               |
+| 5 — Core gaps           | 15–16 | Find & replace, image paste/drop + asset:// resolution                      |
+| 6 — Hardening & Release | 17–19 | Coverage, packaging, memory audit (Rust-side)                               |
 
 ## CI/CD Pipeline
 
