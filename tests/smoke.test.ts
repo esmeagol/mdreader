@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test('app window opens with correct title', async ({ page }) => {
 	await page.goto('/');
-	await expect(page).toHaveTitle('mdreader');
+	await expect(page).toHaveTitle('Untitled — mdreader');
 });
 
 test('app launches without console errors about permissions', async ({ page }) => {
