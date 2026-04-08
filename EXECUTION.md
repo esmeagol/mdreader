@@ -419,7 +419,13 @@ git push
 
 ## Day 3 — App Shell Layout
 
-**Goal:** A static three-panel layout: sidebar | editor | status bar. No logic yet.
+**Goal:** A static four-zone layout: sidebar | toolbar (empty slot) | editor | status bar. No logic yet.
+
+**Layout design decisions:**
+- The grid includes a `toolbar` row from day one (empty for now) so it can be filled later without restructuring the grid.
+- The status bar spans the full width (including under the sidebar) — one unified bar across the bottom.
+- All colors and dimensions are CSS variables defined in `app.css`. The component uses only variables, never hardcoded values.
+- The global CSS reset (`*, body`) lives exclusively in `app.css`, not in the component's `<style>` block.
 
 ### Step 3.1 — Write a failing layout test
 
@@ -465,9 +471,64 @@ npx playwright test tests/layout.test.ts
 # Expected: 5 failed
 ```
 
-### Step 3.2 — Build the layout
+### Step 3.2 — Global CSS (variables + reset)
 
-Replace `src/routes/+page.svelte`:
+Create `src/app.css` first. All dimensions, colors, and the global reset live here — nothing in component `<style>` blocks should hardcode values.
+
+```css
+:root {
+	--sidebar-width: 220px;
+	--toolbar-height: 0px; /* no toolbar yet — set to non-zero when added */
+	--status-bar-height: 28px;
+	--editor-max-width: 800px;
+	--font-size-editor: 16px;
+	--color-border: #e0e0e0;
+	--color-bg: #ffffff;
+	--color-bg-sidebar: #f5f5f5;
+	--color-bg-status: #f8f8f8;
+	--color-text: #1a1a1a;
+	--color-text-muted: #888888;
+	--color-placeholder: #bbbbbb;
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	height: 100vh;
+	overflow: hidden;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	background: var(--color-bg);
+	color: var(--color-text);
+}
+```
+
+Import it in `src/routes/+layout.svelte`. The existing file already sets `<title>` — keep that, just add the import:
+
+```svelte
+<script lang="ts">
+	import '../app.css';
+	import favicon from '$lib/assets/favicon.svg';
+
+	let { children } = $props();
+</script>
+
+<svelte:head>
+	<title>mdreader</title>
+	<link rel="icon" href={favicon} />
+</svelte:head>
+
+{@render children()}
+```
+
+### Step 3.3 — Build the layout
+
+Replace `src/routes/+page.svelte`. No hardcoded colors or dimensions — only CSS variables:
 
 ```svelte
 <script lang="ts">
@@ -478,6 +539,10 @@ Replace `src/routes/+page.svelte`:
 		<!-- Outline will go here -->
 		<p class="placeholder">Outline</p>
 	</aside>
+
+	<div class="toolbar">
+		<!-- Formatting toolbar will go here -->
+	</div>
 
 	<main data-testid="editor-area" class="editor-area">
 		<!-- Editor will go here -->
@@ -490,40 +555,37 @@ Replace `src/routes/+page.svelte`:
 </div>
 
 <style>
-	:global(*, *::before, *::after) {
-		box-sizing: border-box;
-		margin: 0;
-		padding: 0;
-	}
-
-	:global(body) {
-		height: 100vh;
-		overflow: hidden;
-		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-	}
-
 	.app-shell {
 		display: grid;
-		grid-template-columns: 220px 1fr;
-		grid-template-rows: 1fr 28px;
+		grid-template-columns: var(--sidebar-width) 1fr;
+		grid-template-rows: var(--toolbar-height) 1fr var(--status-bar-height);
 		grid-template-areas:
+			'sidebar toolbar'
 			'sidebar editor'
-			'sidebar status';
+			'status  status';
 		height: 100vh;
 	}
 
 	.sidebar {
 		grid-area: sidebar;
-		border-right: 1px solid #e0e0e0;
+		border-right: 1px solid var(--color-border);
+		background: var(--color-bg-sidebar);
 		overflow-y: auto;
 		padding: 12px 8px;
+	}
+
+	.toolbar {
+		grid-area: toolbar;
+		border-bottom: 1px solid var(--color-border);
+		/* hidden until toolbar-height > 0 */
+		overflow: hidden;
 	}
 
 	.editor-area {
 		grid-area: editor;
 		overflow-y: auto;
 		padding: 40px 60px;
-		max-width: 800px;
+		max-width: var(--editor-max-width);
 		margin: 0 auto;
 		width: 100%;
 	}
@@ -534,13 +596,13 @@ Replace `src/routes/+page.svelte`:
 		align-items: center;
 		padding: 0 12px;
 		font-size: 11px;
-		color: #888;
-		border-top: 1px solid #e0e0e0;
-		background: #f8f8f8;
+		color: var(--color-text-muted);
+		border-top: 1px solid var(--color-border);
+		background: var(--color-bg-status);
 	}
 
 	.placeholder {
-		color: #bbb;
+		color: var(--color-placeholder);
 		font-size: 12px;
 	}
 </style>
@@ -551,35 +613,6 @@ Run tests — expect all to pass:
 ```bash
 npx playwright test tests/layout.test.ts
 # Expected: 5 passed
-```
-
-### Step 3.3 — Global CSS reset
-
-Create `src/app.css`:
-
-```css
-:root {
-	--sidebar-width: 220px;
-	--status-bar-height: 28px;
-	--editor-max-width: 800px;
-	--font-size-editor: 16px;
-	--color-border: #e0e0e0;
-	--color-bg: #ffffff;
-	--color-bg-sidebar: #f5f5f5;
-	--color-bg-status: #f0f0f0;
-	--color-text: #1a1a1a;
-	--color-text-muted: #888888;
-}
-```
-
-Import it in `src/routes/+layout.svelte` (create the file):
-
-```svelte
-<script>
-	import '../app.css';
-</script>
-
-<slot />
 ```
 
 ```bash
