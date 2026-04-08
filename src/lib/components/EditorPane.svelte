@@ -1,0 +1,125 @@
+<script lang="ts">
+	import { onMount, onDestroy } from 'svelte';
+	import { Editor } from '@tiptap/core';
+	import StarterKit from '@tiptap/starter-kit';
+	import { Markdown } from 'tiptap-markdown';
+	import TaskList from '@tiptap/extension-task-list';
+	import TaskItem from '@tiptap/extension-task-item';
+	import Strike from '@tiptap/extension-strike';
+	import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+	import { common, createLowlight } from 'lowlight';
+
+	const lowlight = createLowlight(common);
+
+	interface Props {
+		content: string;
+		onChange: (md: string) => void;
+		theme: 'light' | 'dark';
+	}
+
+	let { content, onChange, theme }: Props = $props();
+
+	let editorEl: HTMLElement;
+	let editor: Editor;
+
+	onMount(() => {
+		editor = new Editor({
+			element: editorEl,
+			extensions: [
+				StarterKit.configure({ codeBlock: false, strike: false }),
+				Markdown,
+				TaskList,
+				TaskItem.configure({ nested: true }),
+				Strike,
+				CodeBlockLowlight.configure({ lowlight })
+			],
+			content,
+			editorProps: { attributes: { class: 'tiptap' } },
+			onUpdate: ({ editor }) => {
+				onChange(editor.storage.markdown.getMarkdown());
+			}
+		});
+
+		editorEl.addEventListener('click', async (e) => {
+			const anchor = (e.target as HTMLElement).closest('a');
+			if (!anchor) return;
+			const href = anchor.getAttribute('href');
+			if (!href) return;
+			e.preventDefault();
+			if (href.startsWith('http://') || href.startsWith('https://')) {
+				const { open } = await import('@tauri-apps/plugin-shell');
+				open(href);
+			}
+		});
+	});
+
+	$effect(() => {
+		if (editor && content !== editor.storage.markdown.getMarkdown()) {
+			editor.commands.setContent(content);
+		}
+	});
+
+	onDestroy(() => editor?.destroy());
+</script>
+
+<div bind:this={editorEl} class="editor-mount"></div>
+
+<style>
+	.editor-mount {
+		height: 100%;
+	}
+
+	:global(.tiptap) {
+		outline: none;
+		min-height: 100%;
+		font-size: var(--font-size-editor);
+		line-height: 1.7;
+		color: var(--color-text);
+	}
+	:global(.tiptap h1) {
+		font-size: 2em;
+		font-weight: 700;
+		margin: 0.5em 0;
+	}
+	:global(.tiptap h2) {
+		font-size: 1.5em;
+		font-weight: 600;
+		margin: 0.5em 0;
+	}
+	:global(.tiptap h3) {
+		font-size: 1.25em;
+		font-weight: 600;
+		margin: 0.5em 0;
+	}
+	:global(.tiptap p) {
+		margin: 0.5em 0;
+	}
+	:global(.tiptap strong) {
+		font-weight: 700;
+	}
+	:global(.tiptap em) {
+		font-style: italic;
+	}
+	:global(.tiptap code) {
+		font-family: 'Menlo', monospace;
+		background: rgba(0, 0, 0, 0.06);
+		padding: 0.1em 0.3em;
+		border-radius: 3px;
+		font-size: 0.9em;
+	}
+	:global(.tiptap pre) {
+		background: var(--color-bg-sidebar);
+		border-radius: 6px;
+		padding: 1em;
+		overflow-x: auto;
+		font-family: 'Menlo', monospace;
+		font-size: 0.875em;
+	}
+	:global(.tiptap input[type='checkbox']) {
+		margin-right: 6px;
+	}
+	:global(.tiptap s) {
+		text-decoration: line-through;
+		opacity: 0.6;
+	}
+</style>
