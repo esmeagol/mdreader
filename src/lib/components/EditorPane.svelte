@@ -14,10 +14,9 @@
 	interface Props {
 		content: string;
 		onChange: (md: string) => void;
-		theme: 'light' | 'dark';
 	}
 
-	let { content, onChange, theme }: Props = $props();
+	let { content, onChange }: Props = $props();
 
 	let editorEl: HTMLElement;
 	let editor: Editor;

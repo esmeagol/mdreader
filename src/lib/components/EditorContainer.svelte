@@ -24,7 +24,7 @@
 </script>
 
 {#if editorMode === 'rich'}
-	<EditorPane {content} onChange={handleChange} {theme} />
+	<EditorPane {content} onChange={handleChange} />
 {:else}
 	<SourcePane {content} onChange={handleChange} {theme} />
 {/if}
