@@ -5,19 +5,39 @@
 | Concern       | Choice                                   | Why                                                         |
 | ------------- | ---------------------------------------- | ----------------------------------------------------------- |
 | Desktop shell | **Tauri 2** (Rust + WKWebView)           | ~8MB binary vs Electron's ~200MB; uses macOS system WebView |
-| UI framework  | **Svelte 5**                             | ~20KB runtime, no virtual DOM overhead                      |
+| UI framework  | **Svelte 5**                             | ~20KB runtime, runes for explicit reactivity                |
 | Editor core   | **TipTap 2** (ProseMirror)               | Enables seamless mode natively                              |
+| Source mode   | **CodeMirror 6**                         | Raw markdown editing with syntax highlighting               |
 | Testing       | **Vitest** (unit) + **Playwright** (e2e) |                                                             |
 | CI/CD         | **GitHub Actions**                       |                                                             |
 
+## Architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the full design, component ownership rules,
+state management model, and tradeoffs.
+
+**Summary of key decisions:**
+
+- `AppShell.svelte` owns the CSS grid. All other components are dropped into named snippet
+  slots. Adding a new zone never touches any other file.
+- A single `document` store with named operations (`load`, `update`, `markSaved`, `reset`)
+  is the only shared state. UI state (`sidebarVisible`, `isDistractionFree`, `editorMode`)
+  lives in `+page.svelte` as `$state()` and flows down as props.
+- A single `svelte:window on:keydown` handler in `+page.svelte` owns all app-level shortcuts.
+  No registry, no cleanup burden.
+- Tauri `invoke` calls are two-line functions directly in `+page.svelte`. No abstraction
+  layer, no mocking. The Rust side is tested with `cargo test` using real temp files.
+- No mocking anywhere. Pure functions tested with Vitest. Rust I/O tested with `cargo test`.
+  UI behavior tested with Playwright against the Vite dev server.
+
 ## On Seamless Mode
 
-Build it in from day 1. Typora's seamless mode requires a rich document renderer —
+Build it in from day one. Typora's seamless mode requires a rich document renderer —
 headings look like headings, bold looks bold, raw markdown only appears when cursor
 enters a block. This is what ProseMirror/TipTap does by default.
 
 Starting with CodeMirror (raw text + preview panel) and adding seamless mode later
-means replacing the entire editor core. TipTap from day 1 avoids that rewrite.
+means replacing the entire editor core. TipTap from day one avoids that rewrite.
 
 ## Feature Hierarchy
 
@@ -48,17 +68,32 @@ Markdown Editor
     └── Font size control
 ```
 
+## Component Structure
+
+```
++layout.svelte                 (title $effect, theme $effect)
+└── +page.svelte               (state owner, shortcut handler)
+      └── AppShell             (CSS grid owner)
+            ├── [sidebar]    → Sidebar        (reads document store)
+            ├── [toolbar]    → Toolbar        (empty slot initially)
+            ├── [editor]     → EditorContainer (owns editorMode)
+            │                      ├── EditorPane   (TipTap, dumb)
+            │                      └── SourcePane   (CodeMirror, dumb)
+            └── [statusbar]  → StatusBar      (reads document store)
+```
+
 ## Schedule
 
-| Phase                   | Days  | Focus                                                                       |
-| ----------------------- | ----- | --------------------------------------------------------------------------- |
-| 0 — Foundation          | 1–3   | Scaffold, CI (+Cargo cache), test infra, app shell                          |
-| 1 — Core Editor         | 4–6   | TipTap (+link interception), seamless rendering, source toggle (+undo note) |
-| 2 — File System         | 7–9   | Capabilities config, open, new file, save, quit dialog, recent files        |
-| 3 — Outline Sidebar     | 10–11 | Heading extraction, navigation, active highlight                            |
-| 4 — Polish              | 12–14 | Shortcuts, macOS menu bar, theme, distraction-free, font size               |
-| 5 — Core gaps           | 15–16 | Find & replace, image paste/drop + asset:// resolution                      |
-| 6 — Hardening & Release | 17–19 | Coverage, packaging, memory audit (Rust-side)                               |
+| Phase                   | Days  | Focus                                                                        |
+| ----------------------- | ----- | ---------------------------------------------------------------------------- |
+| 0 — Foundation          | 1–2   | Scaffold, CI (+Cargo cache), test infra                                      |
+| 1 — App Shell           | 3     | document store, AppShell slots, layout, status bar, shortcut handler         |
+| 2 — Core Editor         | 4–6   | EditorContainer + EditorPane (TipTap), extended nodes, source mode toggle    |
+| 3 — File System         | 7–9   | Capabilities config, open, new, save, quit dialog, recent files              |
+| 4 — Outline Sidebar     | 10–11 | Heading extraction, navigation, active highlight                             |
+| 5 — Polish              | 12–14 | macOS menu bar, theme, distraction-free, font size                           |
+| 6 — Core gaps           | 15–16 | Find & replace, image paste + asset:// resolution                            |
+| 7 — Hardening & Release | 17–19 | Coverage, packaging, memory audit (Rust-side)                                |
 
 ## CI/CD Pipeline
 
@@ -66,7 +101,8 @@ Markdown Editor
 on: push / pull_request
 ├── lint (eslint + rustfmt)
 ├── test:unit (Vitest)
-├── test:e2e (Playwright + headless Tauri)
+├── test:unit:rust (cargo test)
+├── test:e2e (Playwright + Vite dev server)
 └── build (tauri build --debug)
 
 on: tag v*
