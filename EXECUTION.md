@@ -24,7 +24,8 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 nvm install 22
 
 # Install Tauri CLI
-cargo install tauri-cli --version "^2"
+# Use --locked to avoid dependency resolution failures on Rust < 1.88
+cargo install tauri-cli --version "^2" --locked
 
 # Install the Tauri prerequisites on macOS
 xcode-select --install
@@ -33,19 +34,19 @@ xcode-select --install
 ### Step 1.1 — Scaffold the project
 
 ```bash
-cargo tauri init
-# When prompted:
-#   App name: mdreader
-#   Window title: mdreader
-#   Web assets location: ../dist
-#   Dev server URL: http://localhost:5173
-#   Frontend dev command: npm run dev
-#   Frontend build command: npm run build
+# Scaffold Svelte frontend first
+# Note: 'npm create svelte' is deprecated — use 'npx sv create' instead
+npx sv create . --template minimal --types ts --add prettier eslint --no-dir-check --no-install
+npm install --engine-strict=false   # node v23 triggers a false engine warning from @eslint/compat
 
-# Then scaffold Svelte frontend
-npm create svelte@latest .
-# Choose: Skeleton project, TypeScript, ESLint, Prettier
-npm install
+# Then scaffold Tauri backend into the same directory
+cargo tauri init \
+  --app-name mdreader \
+  --window-title mdreader \
+  --frontend-dist ../dist \
+  --dev-url http://localhost:5173 \
+  --before-dev-command "npm run dev" \
+  --before-build-command "npm run build"
 ```
 
 Expected directory structure after scaffold:
@@ -73,26 +74,43 @@ Create `tests/smoke.test.ts`:
 import { test, expect } from '@playwright/test';
 
 test('app window opens with correct title', async ({ page }) => {
-	// This test will fail until the app is running
+	await page.goto('/');
 	await expect(page).toHaveTitle('mdreader');
+});
+
+test('app launches without console errors about permissions', async ({ page }) => {
+	const errors: string[] = [];
+	page.on('console', (msg) => {
+		if (msg.type() === 'error') errors.push(msg.text());
+	});
+	await page.goto('/');
+	await page.waitForTimeout(500);
+	const permissionErrors = errors.filter(
+		(e) => e.includes('not allowed') || e.includes('capability')
+	);
+	expect(permissionErrors).toHaveLength(0);
 });
 ```
 
-Run it — it should fail because Playwright is not configured yet:
+> **Why `page.goto('/')` is required:** Without it Playwright evaluates the title on
+> `about:blank`, which is always `""`. The test fails with a confusing
+> `Expected "mdreader" / Received ""` rather than any signal about what is missing.
+> Always navigate before asserting anything about page content.
+
+Run it — it should fail because `@playwright/test` is not installed yet:
 
 ```bash
 npx playwright test
-# Expected: Error — no config found
+# Expected: Error — Cannot find package '@playwright/test'
 ```
 
 ### Step 1.3 — Configure Playwright for Tauri
 
-Install Playwright and the Tauri driver:
+Install Playwright (Chromium only — we don't need all browsers):
 
 ```bash
 npm install --save-dev @playwright/test
-npm install --save-dev tauri-driver   # wraps the Tauri app for Playwright
-npx playwright install
+npx playwright install chromium
 ```
 
 **E2e strategy note:** There are two ways to drive a Tauri app with Playwright:
@@ -145,28 +163,31 @@ export async function mockTauriApi(page: Page, overrides: Record<string, unknown
 }
 ```
 
-Run the smoke test again — it should now fail because the title is wrong:
+Run the smoke test again — it should now fail because the title is empty:
 
 ```bash
 npx playwright test
-# Expected: AssertionError — title was "Tauri App" not "mdreader"
+# Expected: AssertionError — Expected "mdreader" / Received ""
 ```
 
-Update `src-tauri/tauri.conf.json`:
+> **Why the title is `""`:** SvelteKit controls `<title>` through `<svelte:head>` in route
+> files — setting it in `src-tauri/tauri.conf.json` has no effect on the browser title.
+> The fix is in the frontend, not in the Tauri config.
 
-```json
-{
-	"app": {
-		"windows": [{ "title": "mdreader" }]
-	}
-}
+Add the title to `src/routes/+layout.svelte` via `<svelte:head>`:
+
+```svelte
+<svelte:head>
+	<title>mdreader</title>
+	<link rel="icon" href={favicon} />
+</svelte:head>
 ```
 
-Run test again — it should pass:
+Run tests again — both should pass:
 
 ```bash
 npx playwright test
-# Expected: 1 passed
+# Expected: 2 passed
 ```
 
 ### Step 1.4 — Set up ESLint and Prettier
