@@ -40,6 +40,12 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
 
+      - name: Unit tests (Vitest)
+        run: npm run test:unit
+
+      - name: Unit tests (Rust)
+        run: cd src-tauri && cargo test
+
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 

@@ -25,3 +25,7 @@ vite.config.ts.timestamp-*
 # Playwright
 test-results/
 playwright-report/
+
+# Rust build artifacts
+src-tauri/target/
+src-tauri/gen/
