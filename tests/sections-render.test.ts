@@ -18,8 +18,8 @@ function extractHeadings(
 		if (inFence) continue;
 		const m = /^(#{1,6})\s+(.+)$/.exec(line);
 		if (!m) continue;
-		const level = m[1].length;
-		out.push({ tag: `h${level}` as const, text: m[2].trim() });
+		const level = m[1].length as 1 | 2 | 3 | 4 | 5 | 6;
+		out.push({ tag: `h${level}`, text: m[2].trim() });
 	}
 	return out;
 }

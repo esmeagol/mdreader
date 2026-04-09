@@ -6,8 +6,7 @@
 	import StatusBar from '$lib/components/StatusBar.svelte';
 	import EditorContainer from '$lib/components/EditorContainer.svelte';
 	import { document as doc } from '$lib/stores/document';
-	import { recentFiles } from '$lib/stores/recentFiles';
-	import { isTauriRuntime, initTauri, openFile, save, saveAs, newFile } from '$lib/fileService';
+	import { isTauriRuntime, loadRecentFiles, openFile, save, saveAs, newFile } from '$lib/fileService';
 
 	let sidebarVisible = $state(true);
 	let isDistractionFree = $state(false);
@@ -69,14 +68,7 @@
 	}
 
 	onMount(() => {
-		if (isTauriRuntime()) {
-			void (async () => {
-				await initTauri();
-				const { invoke } = await import('@tauri-apps/api/core');
-				const paths = await invoke<string[]>('get_recent_files');
-				recentFiles.set(paths);
-			})();
-		}
+		void loadRecentFiles();
 
 		const intervalId = window.setInterval(() => {
 			const { isDirty, filePath } = doc.get();

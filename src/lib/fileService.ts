@@ -7,7 +7,7 @@ export function isTauriRuntime(): boolean {
 	return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
 
-export async function initTauri(): Promise<void> {
+async function initTauri(): Promise<void> {
 	if (!isTauriRuntime()) return;
 	const { invoke } = await import('@tauri-apps/api/core');
 	tauriInvoke = invoke;
@@ -19,6 +19,14 @@ async function invoke<T>(command: string, payload: Record<string, unknown>): Pro
 		tauriInvoke = imp;
 	}
 	return tauriInvoke<T>(command, payload);
+}
+
+/** Call once at app startup to pre-warm the invoke reference and populate recent files. */
+export async function loadRecentFiles(): Promise<void> {
+	if (!isTauriRuntime()) return;
+	await initTauri();
+	const paths = await invoke<string[]>('get_recent_files', {});
+	recentFiles.set(paths);
 }
 
 async function confirmDiscardChanges(): Promise<boolean> {
