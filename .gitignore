@@ -29,3 +29,6 @@ playwright-report/
 # Rust build artifacts
 src-tauri/target/
 src-tauri/gen/
+
+# Local agent/session artifacts
+.specstory/
