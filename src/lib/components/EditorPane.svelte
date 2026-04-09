@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, setContext } from 'svelte';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import { Markdown } from 'tiptap-markdown';
@@ -14,6 +14,7 @@
 	import { common, createLowlight } from 'lowlight';
 	import { getMarkdown } from '$lib/markdown';
 	import { HeadingId } from '$lib/HeadingId';
+	import { type EditorHandle, EDITOR_HANDLE_KEY } from '$lib/editor';
 
 	const lowlight = createLowlight(common);
 
@@ -28,6 +29,19 @@
 	let editorEl: HTMLElement;
 	let editor: Editor;
 	let linkClickHandler: ((e: MouseEvent) => void) | undefined;
+
+	// Expose EditorHandle via context so parent components can drive the editor
+	// imperatively without reactive prop round-trips.
+	setContext<EditorHandle>(EDITOR_HANDLE_KEY, {
+		setContent(markdown: string) {
+			if (!editor) return;
+			editor.commands.setContent(markdown, { emitUpdate: false });
+		},
+		getContent(): string {
+			if (!editor) return '';
+			return getMarkdown(editor);
+		}
+	});
 
 	onMount(() => {
 		editor = new Editor({
