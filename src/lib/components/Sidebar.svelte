@@ -4,15 +4,15 @@
 	import RecentFiles from './RecentFiles.svelte';
 
 	interface Props {
-		onOpen: (path: string) => void;
+		onOpenFile: (path: string) => void;
 	}
-	let { onOpen }: Props = $props();
+	let { onOpenFile }: Props = $props();
 
 	let headings = $derived(extractHeadings($doc.content));
 </script>
 
 <div data-testid="sidebar" class="sidebar">
-	<RecentFiles {onOpen} />
+	<RecentFiles {onOpenFile} />
 
 	{#if headings.length > 0}
 		<section class="outline">

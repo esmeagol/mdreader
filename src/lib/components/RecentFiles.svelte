@@ -2,9 +2,9 @@
 	import { recentFiles } from '$lib/stores/recentFiles';
 
 	interface Props {
-		onOpen: (path: string) => void;
+		onOpenFile: (path: string) => void;
 	}
-	let { onOpen }: Props = $props();
+	let { onOpenFile }: Props = $props();
 
 	const displayName = (p: string) => p.split('/').pop() ?? p;
 </script>
@@ -13,7 +13,7 @@
 	<section class="recent">
 		<p class="label">Recent</p>
 		{#each $recentFiles as path (path)}
-			<button class="item" onclick={() => onOpen(path)} title={path}>
+			<button class="item" onclick={() => onOpenFile(path)} title={path}>
 				{displayName(path)}
 			</button>
 		{/each}
