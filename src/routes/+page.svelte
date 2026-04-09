@@ -75,7 +75,22 @@
 		return invoke<T>(command, payload);
 	}
 
+	async function confirmDiscardChanges(): Promise<boolean> {
+		if (isTauriRuntime()) {
+			const { ask } = await import('@tauri-apps/plugin-dialog');
+			return ask('You have unsaved changes. Open anyway?', {
+				title: 'Unsaved Changes',
+				kind: 'warning'
+			});
+		}
+		return window.confirm('You have unsaved changes. Open anyway?');
+	}
+
 	async function openFile(path?: string) {
+		if (doc.get().isDirty) {
+			const confirmed = await confirmDiscardChanges();
+			if (!confirmed) return;
+		}
 		if (!isTauriRuntime()) return;
 		let selected = path;
 		if (!selected) {
