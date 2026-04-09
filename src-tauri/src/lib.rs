@@ -1,7 +1,8 @@
 mod file_ops;
 
-use file_ops::read_markdown_file;
+use file_ops::{read_markdown_file, write_markdown_file};
 use std::sync::Mutex;
+use tauri::Emitter;
 
 pub struct AppState {
     pub current_file: Mutex<Option<String>>,
@@ -12,6 +13,20 @@ fn open_file(state: tauri::State<'_, AppState>, path: String) -> Result<String, 
     let content = read_markdown_file(&path)?;
     *state.current_file.lock().unwrap() = Some(path);
     Ok(content)
+}
+
+#[tauri::command]
+fn save_file(state: tauri::State<'_, AppState>, content: String) -> Result<(), String> {
+    let path = state.current_file.lock().unwrap().clone();
+    match path {
+        Some(path) => write_markdown_file(&path, &content),
+        None => Err("No file is currently open".to_string()),
+    }
+}
+
+#[tauri::command]
+fn set_current_file(state: tauri::State<'_, AppState>, path: String) {
+    *state.current_file.lock().unwrap() = Some(path);
 }
 
 #[cfg(test)]
@@ -40,7 +55,17 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![open_file])
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.emit("close-requested", ());
+            }
+        })
+        .invoke_handler(tauri::generate_handler![
+            open_file,
+            save_file,
+            set_current_file
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

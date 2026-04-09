@@ -12,6 +12,14 @@ pub fn read_markdown_file(path: &str) -> Result<String, String> {
     fs::read_to_string(path).map_err(|e| e.to_string())
 }
 
+pub fn write_markdown_file(path: &str, content: &str) -> Result<(), String> {
+    let path = Path::new(path);
+    if path.extension().and_then(|e| e.to_str()) != Some("md") {
+        return Err("Only .md files are supported".to_string());
+    }
+    fs::write(path, content).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -35,6 +43,21 @@ mod tests {
     fn errors_on_non_md_file() {
         let tmp = NamedTempFile::with_suffix(".txt").unwrap();
         let result = read_markdown_file(tmp.path().to_str().unwrap());
+        assert!(result.unwrap_err().contains("Only .md files"));
+    }
+
+    #[test]
+    fn writes_and_reads_back_correctly() {
+        let tmp = NamedTempFile::with_suffix(".md").unwrap();
+        write_markdown_file(tmp.path().to_str().unwrap(), "# Written").unwrap();
+        let content = read_markdown_file(tmp.path().to_str().unwrap()).unwrap();
+        assert_eq!(content, "# Written");
+    }
+
+    #[test]
+    fn write_errors_on_non_md_extension() {
+        let tmp = NamedTempFile::with_suffix(".txt").unwrap();
+        let result = write_markdown_file(tmp.path().to_str().unwrap(), "content");
         assert!(result.unwrap_err().contains("Only .md files"));
     }
 }

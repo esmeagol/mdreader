@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import AppShell from '$lib/components/AppShell.svelte';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import Toolbar from '$lib/components/Toolbar.svelte';
@@ -69,23 +70,80 @@
 		return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 	}
 
+	async function invokeTauri<T>(command: string, payload: Record<string, unknown>) {
+		const { invoke } = await import('@tauri-apps/api/core');
+		return invoke<T>(command, payload);
+	}
+
 	async function openFile() {
 		if (!isTauriRuntime()) return;
-		const [{ open }, { invoke }] = await Promise.all([
-			import('@tauri-apps/plugin-dialog'),
-			import('@tauri-apps/api/core')
-		]);
+		const { open } = await import('@tauri-apps/plugin-dialog');
 		const selected = await open({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
 		if (!selected || Array.isArray(selected)) return;
-		const content = await invoke<string>('open_file', { path: selected });
+		const content = await invokeTauri<string>('open_file', { path: selected });
 		doc.load(content, selected);
 	}
 
-	async function save() {}
-	async function saveAs() {}
+	async function save() {
+		if (!isTauriRuntime()) return;
+		const { content, filePath } = doc.get();
+		if (!filePath) {
+			await saveAs();
+			return;
+		}
+		await invokeTauri<void>('save_file', { content });
+		doc.markSaved();
+	}
+
+	async function saveAs() {
+		if (!isTauriRuntime()) return;
+		const { content } = doc.get();
+		const { save } = await import('@tauri-apps/plugin-dialog');
+		const path = await save({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
+		if (!path || Array.isArray(path)) return;
+		await invokeTauri<void>('set_current_file', { path });
+		await invokeTauri<void>('save_file', { content });
+		doc.load(content, path);
+		doc.markSaved();
+	}
+
 	function newFile() {
 		doc.reset();
 	}
+
+	onMount(() => {
+		const intervalId = window.setInterval(() => {
+			const { isDirty, filePath } = doc.get();
+			if (isDirty && filePath) void save();
+		}, 30_000);
+
+		let unlisten: (() => void) | undefined;
+		if (isTauriRuntime()) {
+			void (async () => {
+				const [{ listen }, { ask }, { getCurrentWindow }] = await Promise.all([
+					import('@tauri-apps/api/event'),
+					import('@tauri-apps/plugin-dialog'),
+					import('@tauri-apps/api/window')
+				]);
+				unlisten = await listen('close-requested', async () => {
+					if (!doc.get().isDirty) {
+						await getCurrentWindow().close();
+						return;
+					}
+					const confirmed = await ask('You have unsaved changes. Quit without saving?', {
+						title: 'Unsaved Changes',
+						kind: 'warning'
+					});
+					if (confirmed) await getCurrentWindow().close();
+				});
+			})();
+		}
+
+		return () => {
+			window.clearInterval(intervalId);
+			unlisten?.();
+		};
+	});
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
