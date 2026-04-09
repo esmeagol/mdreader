@@ -18,10 +18,7 @@
 				<button
 					class="heading-item level-{h.level}"
 					onclick={() => {
-						const el = Array.from(
-							document.querySelectorAll<HTMLElement>('.tiptap h1, .tiptap h2, .tiptap h3')
-						).find((n) => n.textContent?.trim() === h.text);
-						el?.scrollIntoView({ behavior: 'smooth' });
+						document.getElementById(h.slug)?.scrollIntoView({ behavior: 'smooth' });
 					}}
 				>
 					{h.text}
