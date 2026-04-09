@@ -75,11 +75,15 @@
 		return invoke<T>(command, payload);
 	}
 
-	async function openFile() {
+	async function openFile(path?: string) {
 		if (!isTauriRuntime()) return;
-		const { open } = await import('@tauri-apps/plugin-dialog');
-		const selected = await open({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
-		if (!selected || Array.isArray(selected)) return;
+		let selected = path;
+		if (!selected) {
+			const { open } = await import('@tauri-apps/plugin-dialog');
+			const picked = await open({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
+			if (!picked || Array.isArray(picked)) return;
+			selected = picked;
+		}
 		const content = await invokeTauri<string>('open_file', { path: selected });
 		doc.load(content, selected);
 	}
