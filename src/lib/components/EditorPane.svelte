@@ -13,6 +13,7 @@
 	import TableHeader from '@tiptap/extension-table-header';
 	import { common, createLowlight } from 'lowlight';
 	import { getMarkdown } from '$lib/markdown';
+	import { HeadingId } from '$lib/HeadingId';
 
 	const lowlight = createLowlight(common);
 
@@ -33,6 +34,7 @@
 			element: editorEl,
 			extensions: [
 				StarterKit.configure({ codeBlock: false, strike: false }),
+				HeadingId,
 				Markdown,
 				TaskList,
 				TaskItem.configure({ nested: true }),
