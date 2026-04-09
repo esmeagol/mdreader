@@ -120,21 +120,19 @@
 		let unlisten: (() => void) | undefined;
 		if (isTauriRuntime()) {
 			void (async () => {
-				const [{ listen }, { ask }, { getCurrentWindow }] = await Promise.all([
-					import('@tauri-apps/api/event'),
+				const [{ ask }, { getCurrentWindow }] = await Promise.all([
 					import('@tauri-apps/plugin-dialog'),
 					import('@tauri-apps/api/window')
 				]);
-				unlisten = await listen('close-requested', async () => {
-					if (!doc.get().isDirty) {
-						await getCurrentWindow().close();
-						return;
-					}
+				const appWindow = getCurrentWindow();
+				unlisten = await appWindow.onCloseRequested(async (event) => {
+					if (!doc.get().isDirty) return;
+					event.preventDefault();
 					const confirmed = await ask('You have unsaved changes. Quit without saving?', {
 						title: 'Unsaved Changes',
 						kind: 'warning'
 					});
-					if (confirmed) await getCurrentWindow().close();
+					if (confirmed) await appWindow.destroy();
 				});
 			})();
 		}

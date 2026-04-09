@@ -15,6 +15,7 @@
 
 	let containerEl: HTMLElement;
 	let view: EditorView;
+	let applyingExternalDoc = false;
 
 	onMount(() => {
 		view = new EditorView({
@@ -25,7 +26,9 @@
 					markdown(),
 					...(theme === 'dark' ? [oneDark] : []),
 					EditorView.updateListener.of((update) => {
-						if (update.docChanged) onChange(update.state.doc.toString());
+						if (update.docChanged && !applyingExternalDoc) {
+							onChange(update.state.doc.toString());
+						}
 					})
 				]
 			}),
@@ -38,6 +41,7 @@
 		const current = view.state.doc.toString();
 		if (current === content) return;
 
+		applyingExternalDoc = true;
 		view.dispatch({
 			changes: {
 				from: 0,
@@ -45,6 +49,7 @@
 				insert: content
 			}
 		});
+		applyingExternalDoc = false;
 	});
 
 	onDestroy(() => view?.destroy());

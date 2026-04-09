@@ -83,8 +83,14 @@ content should avoid creating a second vertical scrollbar.
 
 ### `+page.svelte`
 
-Owns application-level UI state and the keyboard shortcut handler. No Tauri calls — those
-are `invoke` calls in plain async functions defined in the same file.
+Owns application-level UI state and the keyboard shortcut handler. Tauri is wired with thin
+`invoke` helpers and dialog imports in the same file. **Window close** uses Tauri 2’s
+`getCurrentWindow().onCloseRequested()`: if the document is clean, the handler returns
+without `preventDefault()` and the runtime closes the window (via `destroy()` internally);
+if dirty, the handler calls `preventDefault()`, runs the native **ask** dialog, and calls
+`destroy()` only when the user confirms quit. There is **no** Rust `on_window_event` hook
+that `prevent_close`s and re-emits a custom event — that pattern was removed to match the
+supported JS API and ACL permissions (`core:window:allow-close`, `core:window:allow-destroy`).
 
 ```svelte
 <script lang="ts">
@@ -122,7 +128,9 @@ operations on every change. Holds `editorMode` as local `$state()` — nothing o
 `EditorContainer` needs to know which mode is active.
 
 Does **not** call `EditorPane` or `SourcePane` methods via a ref. It passes `content` as a
-prop and receives `onChange` callbacks.
+prop and receives `onChange` callbacks. **`handleChange` must not call `document.update`
+when the markdown is unchanged** (same string as the store) so spurious editor callbacks do
+not set `isDirty` after a file load or prop-driven sync.
 
 ```svelte
 <script lang="ts">
@@ -133,6 +141,7 @@ prop and receives `onChange` callbacks.
 
   function handleChange(md: string) {
     content = md;
+    if (md === document.get().content) return;
     document.update(md);
   }
 
@@ -154,6 +163,15 @@ Owns the TipTap instance. Handles editor-internal shortcuts (bold, italic, etc.)
 
 Props: `content: string`, `onChange: (md: string) => void`, `theme: 'light' | 'dark'`.
 
+When the `content` prop changes from outside (e.g. `document.load` after **Cmd+O**), the
+`$effect` that calls `setContent` uses **`{ emitUpdate: false }`** so TipTap does not fire
+`onUpdate` for that replacement — otherwise the store would immediately receive `update()`
+and mark the file dirty even though the user did not edit.
+
+Blockquotes and other rich nodes have **explicit `:global(.tiptap …)` styles** here (e.g.
+`blockquote` with border and muted text) so they read as structured content, not plain
+paragraphs.
+
 Does not know about: source mode, file I/O, stores, Tauri.
 
 ### `SourcePane.svelte`
@@ -161,6 +179,10 @@ Does not know about: source mode, file I/O, stores, Tauri.
 Owns the CodeMirror instance.
 
 Props: `content: string`, `onChange: (md: string) => void`, `theme: 'light' | 'dark'`.
+
+When the `$effect` replaces the full document to match a new `content` prop, it sets a
+**suppress flag** so the `updateListener` does not call `onChange` for that programmatic
+transaction — otherwise an external load would mark the document dirty.
 
 Does not know about: rich mode, file I/O, stores, Tauri.
 
@@ -318,7 +340,7 @@ No mocks. Each layer is tested in its natural environment.
 |---|---|---|
 | Pure functions | Vitest | `formatWordCount`, `formatTitle`, heading extraction, markdown round-trips |
 | Rust file I/O | `cargo test` + real tempfiles | `read_markdown_file`, `write_markdown_file`, validation |
-| UI behaviour | Playwright + Vite dev server | Rendering, editing, mode toggle, layout, shortcuts |
+| UI behaviour | Playwright + Vite dev server | Rendering, editing, mode toggle, layout, shortcuts, multi-section fixture (`tests/sections-render.test.ts`) |
 | Tauri `invoke` wiring | Not unit tested — kept thin | Reviewed, tested via manual/integration run |
 
 Playwright tests run against the Vite dev server (no Tauri binary). This means `invoke` is
@@ -357,13 +379,15 @@ Cmd+O → handleKeydown → openFile()
   → invoke('open_file', { path })   [Rust reads file, tested with cargo test]
   → document.load(content, path)
   → EditorContainer reacts to document.get().content → passes content prop to EditorPane
+  → EditorPane setContent(..., { emitUpdate: false }) / SourcePane suppressed dispatch
+    so the initial sync does not call document.update — isDirty stays false
   → StatusBar reacts → word count updates
   → +layout.svelte $effect → <title> updates
 
 ── User types ─────────────────────────────────────────────────────────────
 EditorPane onChange(md)
   → EditorContainer.handleChange(md)
-  → document.update(md)
+  → document.update(md)   (skipped when md === store content)
   → StatusBar reacts → word count updates
   → Sidebar reacts → heading list re-derived
   → +layout.svelte $effect → <title> gains dirty indicator

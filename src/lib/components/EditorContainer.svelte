@@ -14,6 +14,7 @@
 
 	function handleChange(md: string) {
 		content = md;
+		if (md === doc.get().content) return;
 		doc.update(md);
 	}
 

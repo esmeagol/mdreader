@@ -2,10 +2,17 @@ mod file_ops;
 
 use file_ops::{read_markdown_file, write_markdown_file};
 use std::sync::Mutex;
-use tauri::Emitter;
 
 pub struct AppState {
     pub current_file: Mutex<Option<String>>,
+}
+
+fn save_file_impl(state: &AppState, content: String) -> Result<(), String> {
+    let path = state.current_file.lock().unwrap().clone();
+    match path {
+        Some(path) => write_markdown_file(&path, &content),
+        None => Err("No file is currently open".to_string()),
+    }
 }
 
 #[tauri::command]
@@ -17,11 +24,7 @@ fn open_file(state: tauri::State<'_, AppState>, path: String) -> Result<String, 
 
 #[tauri::command]
 fn save_file(state: tauri::State<'_, AppState>, content: String) -> Result<(), String> {
-    let path = state.current_file.lock().unwrap().clone();
-    match path {
-        Some(path) => write_markdown_file(&path, &content),
-        None => Err("No file is currently open".to_string()),
-    }
+    save_file_impl(&state, content)
 }
 
 #[tauri::command]
@@ -31,9 +34,31 @@ fn set_current_file(state: tauri::State<'_, AppState>, path: String) {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
+
     #[test]
-    fn sanity_check() {
-        assert_eq!(2 + 2, 4);
+    fn save_file_impl_errors_when_no_file_open() {
+        let state = AppState {
+            current_file: Mutex::new(None),
+        };
+        assert_eq!(
+            save_file_impl(&state, "x".into()).unwrap_err(),
+            "No file is currently open"
+        );
+    }
+
+    #[test]
+    fn save_file_impl_writes_to_current_path() {
+        let mut tmp = NamedTempFile::with_suffix(".md").unwrap();
+        writeln!(tmp, "old").unwrap();
+        let path = tmp.path().to_str().unwrap().to_string();
+        let state = AppState {
+            current_file: Mutex::new(Some(path)),
+        };
+        save_file_impl(&state, "new content".into()).unwrap();
+        assert_eq!(std::fs::read_to_string(tmp.path()).unwrap(), "new content");
     }
 }
 
@@ -54,12 +79,6 @@ pub fn run() {
                 )?;
             }
             Ok(())
-        })
-        .on_window_event(|window, event| {
-            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.emit("close-requested", ());
-            }
         })
         .invoke_handler(tauri::generate_handler![
             open_file,

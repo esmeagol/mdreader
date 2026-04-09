@@ -14,6 +14,49 @@ communicate, check the architecture first.
 
 ---
 
+## Current implementation (authoritative where it differs from older day steps)
+
+The day-by-day sections below are the original TDD walkthrough. When a snippet conflicts
+with the repository, treat this section and [ARCHITECTURE.md](ARCHITECTURE.md) as correct.
+
+### Tauri capabilities
+
+`src-tauri/capabilities/default.json` grants `core:default`, `core:path:default`, dialog
+plugins (`dialog:allow-open`, `dialog:allow-save`, `dialog:allow-ask`), `shell:allow-open`,
+and **`core:window:allow-close`** plus **`core:window:allow-destroy`**. The destroy permission
+matters for Tauri 2’s default close path: `onCloseRequested` finishes by calling `destroy()`
+when the user does not cancel.
+
+### Window close (supersedes Day 8 — Step 8.4)
+
+Do **not** use Rust `on_window_event` only to `prevent_close()` and `window.emit("close-requested", …)`.
+Instead, in `+page.svelte`, register **`getCurrentWindow().onCloseRequested(...)`**:
+
+- If the document is **clean**, return without `preventDefault()` so the window can close.
+- If **dirty**, call **`event.preventDefault()`**, show **`ask`**, then **`getCurrentWindow().destroy()`**
+  if the user confirms quitting without saving.
+
+### Dirty flag after `document.load` / prop sync
+
+Programmatic editor updates must not call `document.update()`:
+
+- **TipTap:** `setContent(content, { emitUpdate: false })` when replacing from props.
+- **CodeMirror:** Suppress the change listener while applying a full external replace in `$effect`.
+- **EditorContainer:** Skip `document.update` when `onChange` reports markdown identical to the store.
+
+### Playwright: multi-section rendering
+
+- **`tests/fixtures/multi-section.md`** — headings, lists, link, blockquote, fenced code.
+- **`tests/sections-render.test.ts`** — reads the fixture, loads it via the `document` store
+  in the browser (no Tauri), asserts heading tags in order and body formatting under `.tiptap`.
+
+### Rich text: blockquotes
+
+`EditorPane.svelte` includes **CSS for `blockquote`** so quotes are visually distinct from
+normal paragraphs.
+
+---
+
 ## Day 1 — Project Scaffold + CI ✓
 
 **Done.** Tauri + Svelte scaffold, Playwright smoke tests, GitHub Actions CI pipeline.
@@ -1246,17 +1289,20 @@ Create `src-tauri/capabilities/default.json`:
   "windows": ["main"],
   "permissions": [
     "core:default",
-    "path:default",
+    "core:window:allow-close",
+    "core:window:allow-destroy",
+    "core:path:default",
     "dialog:allow-open",
     "dialog:allow-save",
     "dialog:allow-ask",
-    "fs:allow-read-text-file",
-    "fs:allow-write-text-file",
-    "fs:allow-create-dir",
     "shell:allow-open"
   ]
 }
 ```
+
+> **Note:** The live project uses `core:path:default` and the window ACLs above. File read/write
+> are implemented via custom commands and `std::fs` in Rust, not the `fs` plugin — adjust if you
+> add the `fs` plugin later.
 
 Add plugins to `src-tauri/Cargo.toml`:
 
@@ -1540,37 +1586,33 @@ onMount(() => {
 
 ### Step 8.4 — Quit with unsaved changes
 
-In `src-tauri/src/lib.rs`:
+**Superseded — see [Current implementation](#current-implementation-authoritative-where-it-differs-from-older-day-steps)** (window close + ACLs).
 
-```rust
-use tauri::Manager;
-
-// In the Builder:
-.on_window_event(|window, event| {
-    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-        api.prevent_close();
-        window.emit("close-requested", ()).unwrap();
-    }
-})
-```
-
-In `+page.svelte`:
+Use **`getCurrentWindow().onCloseRequested`** in `+page.svelte` (not Rust `prevent_close` + `listen('close-requested')`). Rough shape:
 
 ```typescript
-import { listen } from '@tauri-apps/api/event';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ask } from '@tauri-apps/plugin-dialog';
 
-onMount(async () => {
-  await listen('close-requested', async () => {
-    if (!doc.get().isDirty) { await getCurrentWindow().close(); return; }
-    const confirmed = await ask('You have unsaved changes. Quit without saving?', {
-      title: 'Unsaved Changes', kind: 'warning'
+onMount(() => {
+  let unlisten: (() => void) | undefined;
+  void (async () => {
+    const appWindow = getCurrentWindow();
+    unlisten = await appWindow.onCloseRequested(async (event) => {
+      if (!doc.get().isDirty) return;
+      event.preventDefault();
+      const confirmed = await ask('You have unsaved changes. Quit without saving?', {
+        title: 'Unsaved Changes',
+        kind: 'warning'
+      });
+      if (confirmed) await appWindow.destroy();
     });
-    if (confirmed) await getCurrentWindow().close();
-  });
+  })();
+  return () => unlisten?.();
 });
 ```
+
+Capabilities must allow **`core:window:allow-destroy`** (and typically **`core:window:allow-close`**) for the built-in close path.
 
 Write a unit test for title formatting (already done in Day 3). Write an e2e test for
 the dirty indicator:
@@ -2417,3 +2459,7 @@ git commit -m "perf: memory audit and fixes"
 | 17  | No pure function below 80% branch coverage |
 | 18  | `.dmg` produced by CI on `v*` tag |
 | 19  | Idle < 80MB, 10K-line file < 150MB |
+
+**Beyond the original gates:** multi-section Playwright tests (`tests/sections-render.test.ts`),
+Tauri 2 quit flow (`onCloseRequested`, `allow-destroy`), and editor sync that avoids a false
+dirty flag after open — see [Current implementation](#current-implementation-authoritative-where-it-differs-from-older-day-steps).

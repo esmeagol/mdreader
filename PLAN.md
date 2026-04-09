@@ -117,6 +117,16 @@ on: tag v*
 
 **Rule:** Every day ends with green CI. No day ships untested functionality.
 
+## Implementation notes (kept in sync with the repo)
+
+These items extend the baseline plan; see [ARCHITECTURE.md](ARCHITECTURE.md) for rationale.
+
+- **Playwright — multi-section rendering:** `tests/sections-render.test.ts` reads `tests/fixtures/multi-section.md`, loads it through the `document` store (same pattern as other e2e tests; no Tauri binary), and asserts headings and representative inline/block nodes under `.tiptap`.
+- **Vitest — markdown / blockquote:** `src/lib/markdown.test.ts` includes a check that multi-line blockquote markdown parses to `<blockquote>` in the TipTap document (round-trip line breaks may still differ from the serializer; that is a known `tiptap-markdown` limitation).
+- **Tauri 2 — window close:** The app uses `getCurrentWindow().onCloseRequested()` in `+page.svelte` (no Rust `on_window_event` + custom emit). Capabilities include `core:window:allow-close` and `core:window:allow-destroy`. A clean quit does not call `preventDefault`; the handler only intervenes when `isDirty` is true.
+- **Dirty flag — programmatic sync:** Loading or replacing content from the store must not flip `isDirty`. TipTap uses `setContent(content, { emitUpdate: false })` when syncing from props; CodeMirror suppresses `onChange` while applying an external document replace; `EditorContainer.handleChange` skips `document.update` when the markdown equals the store.
+- **Rich styling — blockquotes:** `EditorPane.svelte` applies distinct CSS for `blockquote` so quoted text is visually obvious, not just semantic HTML.
+
 ## Performance Targets
 
 - Binary size: < 20MB
