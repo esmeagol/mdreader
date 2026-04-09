@@ -11,6 +11,7 @@ import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import { common, createLowlight } from 'lowlight';
+import { getMarkdown } from './markdown';
 
 const lowlight = createLowlight(common);
 
@@ -50,7 +51,7 @@ describe('markdown round-trip', () => {
 	for (const [name, markdown] of cases) {
 		it(`round-trips ${name}`, () => {
 			const editor = createEditor(markdown);
-			const result = editor.storage.markdown.getMarkdown().trim();
+			const result = getMarkdown(editor).trim();
 			editor.destroy();
 			expect(result).toBe(markdown.trim());
 		});
@@ -61,7 +62,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips strikethrough', () => {
 		const md = 'This is ~~struck~~ text.';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});
@@ -69,7 +70,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips a fenced code block', () => {
 		const md = '```javascript\nconsole.log("hello");\n```';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});
@@ -77,7 +78,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips an unchecked task list item', () => {
 		const md = '- [ ] Unchecked task';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});
@@ -85,7 +86,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips a checked task list item', () => {
 		const md = '- [x] Checked task';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});
@@ -93,7 +94,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips a basic markdown table', () => {
 		const md = '| Name | Role |\n| --- | --- |\n| Alice | Engineer |';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});
@@ -101,7 +102,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips a markdown table with inline formatting', () => {
 		const md = '| Name | Notes |\n| --- | --- |\n| Alice | **Strong** and *italic* |';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});

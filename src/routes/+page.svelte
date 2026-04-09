@@ -4,6 +4,7 @@
 	import Toolbar from '$lib/components/Toolbar.svelte';
 	import StatusBar from '$lib/components/StatusBar.svelte';
 	import EditorContainer from '$lib/components/EditorContainer.svelte';
+	import { document as doc } from '$lib/stores/document';
 
 	let sidebarVisible = $state(true);
 	let isDistractionFree = $state(false);
@@ -11,10 +12,9 @@
 	let fontSize = $state(16);
 
 	let theme = $derived(
-		typeof window !== 'undefined' &&
-			window.document.documentElement.dataset.theme === 'dark'
+		(typeof window !== 'undefined' && window.document.documentElement.dataset.theme === 'dark'
 			? 'dark'
-			: 'light'
+			: 'light') as 'light' | 'dark'
 	);
 
 	function handleKeydown(e: KeyboardEvent) {
@@ -65,11 +65,27 @@
 		window.document.documentElement.style.setProperty('--font-size-editor', `${fontSize}px`);
 	}
 
-	// openFile, save, saveAs, newFile — implemented in Day 7
-	async function openFile() {}
+	function isTauriRuntime() {
+		return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+	}
+
+	async function openFile() {
+		if (!isTauriRuntime()) return;
+		const [{ open }, { invoke }] = await Promise.all([
+			import('@tauri-apps/plugin-dialog'),
+			import('@tauri-apps/api/core')
+		]);
+		const selected = await open({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
+		if (!selected || Array.isArray(selected)) return;
+		const content = await invoke<string>('open_file', { path: selected });
+		doc.load(content, selected);
+	}
+
 	async function save() {}
 	async function saveAs() {}
-	function newFile() {}
+	function newFile() {
+		doc.reset();
+	}
 </script>
 
 <svelte:window onkeydown={handleKeydown} />

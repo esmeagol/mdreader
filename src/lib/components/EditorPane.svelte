@@ -12,6 +12,7 @@
 	import TableCell from '@tiptap/extension-table-cell';
 	import TableHeader from '@tiptap/extension-table-header';
 	import { common, createLowlight } from 'lowlight';
+	import { getMarkdown } from '$lib/markdown';
 
 	const lowlight = createLowlight(common);
 
@@ -49,7 +50,7 @@
 				}
 			},
 			onUpdate: ({ editor }) => {
-				onChange(editor.storage.markdown.getMarkdown());
+				onChange(getMarkdown(editor));
 			}
 		});
 
@@ -67,7 +68,7 @@
 	});
 
 	$effect(() => {
-		if (editor && content !== editor.storage.markdown.getMarkdown()) {
+		if (editor && content !== getMarkdown(editor)) {
 			editor.commands.setContent(content);
 		}
 	});
