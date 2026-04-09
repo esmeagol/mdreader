@@ -220,7 +220,7 @@ in the codebase hardcodes a colour or dimension value.
   --sidebar-width:      220px;
   --toolbar-height:     0px;   /* empty slot — set non-zero when toolbar is built */
   --status-bar-height:  28px;
-  --editor-max-width:   800px;
+  --editor-max-width:   1100px;
   --font-size-editor:   16px;
 
   --color-border:       #e0e0e0;
@@ -447,16 +447,19 @@ It is the only file that wires AppShell slots together.
 
 <style>
   .editor-area {
-    padding: clamp(16px, 5vw, 60px);
+    padding: clamp(16px, 3vw, 32px);
     max-width: var(--editor-max-width);
     margin: 0 auto;
     width: 100%;
-    height: 100%;
-    overflow-y: auto;
+    min-height: 100%;
   }
   .placeholder { font-size: 12px; color: var(--color-placeholder); }
 </style>
 ```
+
+> **Reader sizing note:** Keep `max-width` + centered margins for readability, but let
+> scrolling stay on AppShell's `.zone-editor` (`overflow-y: auto`) so the scrollbar remains
+> at the far-right edge of the editor pane.
 
 Run layout tests:
 

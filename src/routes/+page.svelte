@@ -161,11 +161,10 @@
 
 <style>
 	.editor-area {
-		padding: clamp(16px, 5vw, 60px);
+		padding: clamp(16px, 3vw, 32px);
 		max-width: var(--editor-max-width);
 		margin: 0 auto;
 		width: 100%;
-		height: 100%;
-		overflow-y: auto;
+		min-height: 100%;
 	}
 </style>

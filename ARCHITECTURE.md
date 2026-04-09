@@ -9,6 +9,7 @@
 5. **No mocking.** Mocks duplicate the contract they're supposed to verify. Instead, keep the JS-to-Tauri boundary thin and test each side in its natural environment.
 6. **Zones are stable.** The layout grid is owned by one component (`AppShell`) and never touched by anyone else. Adding a new zone means editing one file.
 7. **Explicit over implicit.** Prefer props and named function calls over reactive chains. When something breaks, you should be able to follow a call stack, not trace reactive subscriptions.
+8. **Reader width is responsive, not full-bleed.** The reading column is centered with a max-width token, but scrolling is owned by the outer editor zone so the scrollbar stays at the far-right edge.
 
 ---
 
@@ -76,6 +77,9 @@ Props: four named Svelte 5 snippets — `sidebar`, `toolbar`, `editor`, `statusb
 
 Adding a future zone (e.g. a breadcrumb bar): add one row to the grid in AppShell, add one
 snippet prop. Nothing else changes.
+
+AppShell's `.zone-editor` is also the scroll container (`overflow-y: auto`). Inner editor
+content should avoid creating a second vertical scrollbar.
 
 ### `+page.svelte`
 

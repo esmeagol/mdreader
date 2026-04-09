@@ -20,6 +20,10 @@ state management model, and tradeoffs.
 
 - `AppShell.svelte` owns the CSS grid. All other components are dropped into named snippet
   slots. Adding a new zone never touches any other file.
+- Reader presentation uses a responsive centered column (`max-width` token in `app.css`)
+  so content expands/shrinks with window size while preserving readable line length.
+- Vertical scrolling belongs to AppShell's editor zone, keeping the scrollbar on the far
+  right edge of the pane rather than inside an inner centered column.
 - A single `document` store with named operations (`load`, `update`, `markSaved`, `reset`)
   is the only shared state. UI state (`sidebarVisible`, `isDistractionFree`, `editorMode`)
   lives in `+page.svelte` as `$state()` and flows down as props.
