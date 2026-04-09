@@ -14,7 +14,8 @@
 		"format": "prettier --write .",
 		"test:unit": "vitest run",
 		"test:unit:watch": "vitest",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"tauri": "tauri"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^2.0.4",
@@ -23,6 +24,7 @@
 		"@sveltejs/adapter-static": "3.0.10",
 		"@sveltejs/kit": "^2.57.0",
 		"@sveltejs/vite-plugin-svelte": "^7.0.0",
+		"@tauri-apps/cli": "2.10.1",
 		"@testing-library/svelte": "5.3.1",
 		"@types/node": "^22",
 		"eslint": "^10.2.0",
