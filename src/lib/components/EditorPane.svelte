@@ -7,6 +7,10 @@
 	import TaskItem from '@tiptap/extension-task-item';
 	import Strike from '@tiptap/extension-strike';
 	import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+	import { Table } from '@tiptap/extension-table';
+	import TableRow from '@tiptap/extension-table-row';
+	import TableCell from '@tiptap/extension-table-cell';
+	import TableHeader from '@tiptap/extension-table-header';
 	import { common, createLowlight } from 'lowlight';
 
 	const lowlight = createLowlight(common);
@@ -14,9 +18,10 @@
 	interface Props {
 		content: string;
 		onChange: (md: string) => void;
+		theme: 'light' | 'dark';
 	}
 
-	let { content, onChange }: Props = $props();
+	let { content, onChange, theme }: Props = $props();
 
 	let editorEl: HTMLElement;
 	let editor: Editor;
@@ -30,10 +35,19 @@
 				TaskList,
 				TaskItem.configure({ nested: true }),
 				Strike,
-				CodeBlockLowlight.configure({ lowlight })
+				CodeBlockLowlight.configure({ lowlight }),
+				Table.configure({ resizable: false }),
+				TableRow,
+				TableHeader,
+				TableCell
 			],
 			content,
-			editorProps: { attributes: { class: 'tiptap' } },
+			editorProps: {
+				attributes: {
+					class: 'tiptap',
+					'data-editor-theme': theme
+				}
+			},
 			onUpdate: ({ editor }) => {
 				onChange(editor.storage.markdown.getMarkdown());
 			}
@@ -56,6 +70,18 @@
 		if (editor && content !== editor.storage.markdown.getMarkdown()) {
 			editor.commands.setContent(content);
 		}
+	});
+
+	$effect(() => {
+		if (!editor) return;
+		editor.setOptions({
+			editorProps: {
+				attributes: {
+					class: 'tiptap',
+					'data-editor-theme': theme
+				}
+			}
+		});
 	});
 
 	onDestroy(() => editor?.destroy());
@@ -120,5 +146,22 @@
 	:global(.tiptap s) {
 		text-decoration: line-through;
 		opacity: 0.6;
+	}
+	:global(.tiptap table) {
+		border-collapse: collapse;
+		margin: 1em 0;
+		width: 100%;
+		overflow: hidden;
+	}
+	:global(.tiptap th),
+	:global(.tiptap td) {
+		border: 1px solid var(--color-border);
+		padding: 0.4em 0.6em;
+		text-align: left;
+		vertical-align: top;
+	}
+	:global(.tiptap th) {
+		background: var(--color-bg-sidebar);
+		font-weight: 600;
 	}
 </style>

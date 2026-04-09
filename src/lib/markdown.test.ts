@@ -6,6 +6,10 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Strike from '@tiptap/extension-strike';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
 import { common, createLowlight } from 'lowlight';
 
 const lowlight = createLowlight(common);
@@ -22,7 +26,11 @@ function createExtendedEditor(content = '') {
 			TaskList,
 			TaskItem,
 			Strike,
-			CodeBlockLowlight.configure({ lowlight })
+			CodeBlockLowlight.configure({ lowlight }),
+			Table.configure({ resizable: false }),
+			TableRow,
+			TableHeader,
+			TableCell
 		],
 		content
 	});
@@ -76,6 +84,22 @@ describe('extended markdown round-trip', () => {
 
 	it('round-trips a checked task list item', () => {
 		const md = '- [x] Checked task';
+		const editor = createExtendedEditor(md);
+		const result = editor.storage.markdown.getMarkdown().trim();
+		editor.destroy();
+		expect(result).toBe(md);
+	});
+
+	it('round-trips a basic markdown table', () => {
+		const md = '| Name | Role |\n| --- | --- |\n| Alice | Engineer |';
+		const editor = createExtendedEditor(md);
+		const result = editor.storage.markdown.getMarkdown().trim();
+		editor.destroy();
+		expect(result).toBe(md);
+	});
+
+	it('round-trips a markdown table with inline formatting', () => {
+		const md = '| Name | Notes |\n| --- | --- |\n| Alice | **Strong** and *italic* |';
 		const editor = createExtendedEditor(md);
 		const result = editor.storage.markdown.getMarkdown().trim();
 		editor.destroy();

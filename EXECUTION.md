@@ -488,7 +488,7 @@ in place. `EditorContainer` coordinates content; `EditorPane` is a dumb TipTap w
 ### Step 4.1 — Install TipTap
 
 ```bash
-npm install @tiptap/core @tiptap/pm @tiptap/starter-kit @tiptap/extension-markdown
+npm install @tiptap/core @tiptap/pm @tiptap/starter-kit tiptap-markdown
 ```
 
 > Do NOT use `prosemirror-markdown`. It doesn't know about TipTap's custom nodes and will
@@ -502,7 +502,7 @@ Create `src/lib/markdown.test.ts`:
 import { describe, it, expect } from 'vitest';
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
-import { Markdown } from '@tiptap/extension-markdown';
+import { Markdown } from 'tiptap-markdown';
 
 function createEditor(content = '') {
   return new Editor({ extensions: [StarterKit, Markdown], content });
@@ -532,7 +532,7 @@ describe('markdown round-trip', () => {
 
 ```bash
 npm run test:unit
-# Expected: Error — cannot resolve @tiptap/extension-markdown (install not done yet)
+# Expected: Error — cannot resolve tiptap-markdown (install not done yet)
 # After install: 7 passed
 ```
 
@@ -597,7 +597,7 @@ Create `src/lib/components/EditorPane.svelte`:
   import { onMount, onDestroy } from 'svelte';
   import { Editor } from '@tiptap/core';
   import StarterKit from '@tiptap/starter-kit';
-  import { Markdown } from '@tiptap/extension-markdown';
+  import { Markdown } from 'tiptap-markdown';
 
   interface Props {
     content:  string;
@@ -800,6 +800,10 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Strike from '@tiptap/extension-strike';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
 import { common, createLowlight } from 'lowlight';
 
 const lowlight = createLowlight(common);
@@ -812,7 +816,11 @@ function createExtendedEditor(content = '') {
       TaskList,
       TaskItem,
       Strike,
-      CodeBlockLowlight.configure({ lowlight })
+      CodeBlockLowlight.configure({ lowlight }),
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell
     ],
     content
   });
@@ -850,12 +858,28 @@ describe('extended markdown round-trip', () => {
     editor.destroy();
     expect(result).toBe(md);
   });
+
+  it('round-trips a basic markdown table', () => {
+    const md = '| Name | Role |\n| --- | --- |\n| Alice | Engineer |';
+    const editor = createExtendedEditor(md);
+    const result = editor.storage.markdown.getMarkdown().trim();
+    editor.destroy();
+    expect(result).toBe(md);
+  });
+
+  it('round-trips a markdown table with inline formatting', () => {
+    const md = '| Name | Notes |\n| --- | --- |\n| Alice | **Strong** and *italic* |';
+    const editor = createExtendedEditor(md);
+    const result = editor.storage.markdown.getMarkdown().trim();
+    editor.destroy();
+    expect(result).toBe(md);
+  });
 });
 ```
 
 ```bash
 npm run test:unit
-# Expected: 4 new failures — extensions not wired yet
+# Expected: 6 new failures — extensions not wired yet
 ```
 
 ### Step 5.3 — Write failing e2e tests for extended types
@@ -881,11 +905,36 @@ test('strikethrough renders as s element', async ({ page }) => {
   await page.keyboard.press(' ');
   await expect(editor.locator('s')).toContainText('struck');
 });
+
+test('markdown table renders as table in rich mode', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(async () => {
+    // @ts-expect-error Vite browser runtime import path
+    const { document } = await import('/src/lib/stores/document.ts');
+    document.load('| Name | Role |\n| --- | --- |\n| Alice | Engineer |', '/tmp/table.md');
+  });
+  const editor = page.locator('[data-testid="editor-area"] .tiptap');
+  await expect(editor.locator('table')).toBeVisible();
+  await expect(editor.locator('th')).toContainText(['Name', 'Role']);
+  await expect(editor.locator('td')).toContainText(['Alice', 'Engineer']);
+});
+
+test('table cells preserve inline markdown formatting', async ({ page }) => {
+  await page.goto('/');
+  await page.evaluate(async () => {
+    // @ts-expect-error Vite browser runtime import path
+    const { document } = await import('/src/lib/stores/document.ts');
+    document.load('| Name | Notes |\n| --- | --- |\n| Alice | **Strong** and *italic* |', '/tmp/table-format.md');
+  });
+  const editor = page.locator('[data-testid="editor-area"] .tiptap');
+  await expect(editor.locator('table strong')).toContainText('Strong');
+  await expect(editor.locator('table em')).toContainText('italic');
+});
 ```
 
 ```bash
 npx playwright test tests/editor.test.ts
-# Expected: 2 new failures
+# Expected: 4 new failures
 ```
 
 ### Step 5.4 — Wire extended extensions into EditorPane
@@ -897,6 +946,10 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Strike from '@tiptap/extension-strike';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import { Table } from '@tiptap/extension-table';
+import TableRow from '@tiptap/extension-table-row';
+import TableCell from '@tiptap/extension-table-cell';
+import TableHeader from '@tiptap/extension-table-header';
 import { common, createLowlight } from 'lowlight';
 
 const lowlight = createLowlight(common);
@@ -910,7 +963,11 @@ editor = new Editor({
     TaskList,
     TaskItem.configure({ nested: true }),
     Strike,
-    CodeBlockLowlight.configure({ lowlight })
+    CodeBlockLowlight.configure({ lowlight }),
+    Table.configure({ resizable: false }),
+    TableRow,
+    TableHeader,
+    TableCell
   ],
   // ...
 });
@@ -938,7 +995,7 @@ npm run test:unit && npx playwright test
 
 ```bash
 git add .
-git commit -m "feat: code blocks, task lists, strikethrough"
+git commit -m "feat: add code blocks, task lists, strikethrough, and tables"
 ```
 
 **Day 5 done when:** All unit and e2e tests pass including extended node types.
@@ -1015,11 +1072,32 @@ test('undo history is cleared after round-trip through source mode', async ({ pa
   await page.keyboard.press('Meta+z');
   await expect(editor).toContainText('Original text');
 });
+
+test('editing in source mode updates rich mode rendering after toggle back', async ({ page }) => {
+  await page.goto('/');
+  const editorArea = page.locator('[data-testid="editor-area"]');
+  await editorArea.locator('.tiptap').click();
+  await page.keyboard.press('Meta+a');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.type('# Initial Heading');
+
+  await page.keyboard.press('Meta+/');
+  const sourceContent = editorArea.locator('[data-testid="source-editor"] .cm-content');
+  await expect(sourceContent).toBeVisible();
+  await sourceContent.click();
+  await page.keyboard.press('Meta+a');
+  await page.keyboard.press('Backspace');
+  await page.keyboard.insertText('# Updated Heading\n');
+  await expect(sourceContent).toContainText('Updated Heading');
+
+  await page.keyboard.press('Meta+/');
+  await expect(editorArea.locator('h1')).toContainText('Updated Heading');
+});
 ```
 
 ```bash
 npx playwright test tests/source-mode.test.ts
-# Expected: 3 failed
+# Expected: 4 failed
 ```
 
 ### Step 6.3 — Build SourcePane
@@ -1061,6 +1139,15 @@ Create `src/lib/components/SourcePane.svelte`:
         ]
       }),
       parent: containerEl
+    });
+  });
+
+  $effect(() => {
+    if (!view) return;
+    const current = view.state.doc.toString();
+    if (current === content) return;
+    view.dispatch({
+      changes: { from: 0, to: view.state.doc.length, insert: content }
     });
   });
 
@@ -1118,7 +1205,7 @@ No new shortcut wiring needed.
 
 ```bash
 npx playwright test tests/source-mode.test.ts
-# Expected: 3 passed
+# Expected: 4 passed
 ```
 
 ```bash
@@ -1130,8 +1217,8 @@ git add .
 git commit -m "feat: source mode toggle with Cmd+/"
 ```
 
-**Day 6 done when:** Toggle works, content is preserved, undo-stack limitation is tested
-and documented in the test.
+**Day 6 done when:** Toggle works, content is preserved, source edits are reflected back in
+rich mode after toggling, and undo-stack limitation is tested and documented.
 
 ---
 

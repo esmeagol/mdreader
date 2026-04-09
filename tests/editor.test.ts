@@ -54,3 +54,77 @@ test('strikethrough renders as s element', async ({ page }) => {
 	await page.keyboard.press(' ');
 	await expect(editor.locator('s')).toContainText('struck');
 });
+
+test('external document store load syncs rich editor content', async ({ page }) => {
+	await page.goto('/');
+
+	await page.evaluate(async () => {
+		// @ts-expect-error Vite browser runtime import path
+		const { document } = await import('/src/lib/stores/document.ts');
+		document.load('# Loaded Heading\n\nThis is **loaded** content.', '/tmp/loaded.md');
+	});
+
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await expect(editor.locator('h1')).toContainText('Loaded Heading');
+	await expect(editor.locator('strong')).toContainText('loaded');
+});
+
+test('clicking rendered links does not navigate app window', async ({ page }) => {
+	await page.goto('/');
+
+	await page.evaluate(async () => {
+		// @ts-expect-error Vite browser runtime import path
+		const { document } = await import('/src/lib/stores/document.ts');
+		document.load('[Example](https://example.com)', '/tmp/link.md');
+	});
+
+	const link = page.locator('[data-testid="editor-area"] .tiptap a[href="https://example.com"]');
+	await expect(link).toBeVisible();
+	await link.click();
+	await expect(page).toHaveURL(/\/$/);
+});
+
+test('typing marks document dirty and updates title', async ({ page }) => {
+	await page.goto('/');
+	await expect(page).toHaveTitle('Untitled — mdreader');
+
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await editor.click();
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Backspace');
+	await page.keyboard.type('dirty now');
+
+	await expect(page).toHaveTitle('• Untitled — mdreader');
+});
+
+test('markdown table renders as table in rich mode', async ({ page }) => {
+	await page.goto('/');
+
+	await page.evaluate(async () => {
+		// @ts-expect-error Vite browser runtime import path
+		const { document } = await import('/src/lib/stores/document.ts');
+		document.load('| Name | Role |\n| --- | --- |\n| Alice | Engineer |', '/tmp/table.md');
+	});
+
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await expect(editor.locator('table')).toBeVisible();
+	await expect(editor.locator('th')).toContainText(['Name', 'Role']);
+	await expect(editor.locator('td')).toContainText(['Alice', 'Engineer']);
+});
+
+test('table cells preserve inline markdown formatting', async ({ page }) => {
+	await page.goto('/');
+
+	await page.evaluate(async () => {
+		// @ts-expect-error Vite browser runtime import path
+		const { document } = await import('/src/lib/stores/document.ts');
+		document.load(
+			'| Name | Notes |\n| --- | --- |\n| Alice | **Strong** and *italic* |',
+			'/tmp/table-format.md'
+		);
+	});
+
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await expect(editor.locator('table strong')).toContainText('Strong');
+	await expect(editor.locator('table em')).toContainText('italic');
+});

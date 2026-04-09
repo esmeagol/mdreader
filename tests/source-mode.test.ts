@@ -46,3 +46,27 @@ test('undo history is cleared after round-trip through source mode', async ({ pa
 	await page.keyboard.press('Meta+z');
 	await expect(editor).toContainText('Original text');
 });
+
+test('editing in source mode updates rich mode rendering after toggle back', async ({ page }) => {
+	await page.goto('/');
+	const editorArea = page.locator('[data-testid="editor-area"]');
+
+	await editorArea.locator('.tiptap').click();
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Backspace');
+	await page.keyboard.type('# Initial Heading');
+	await expect(editorArea.locator('h1')).toContainText('Initial Heading');
+
+	await page.keyboard.press('Meta+/');
+	const sourceContent = editorArea.locator('[data-testid="source-editor"] .cm-content');
+	await expect(sourceContent).toBeVisible();
+	await sourceContent.click();
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Backspace');
+	await page.keyboard.insertText('# Updated Heading\n');
+	await expect(sourceContent).toContainText('Updated Heading');
+
+	await page.keyboard.press('Meta+/');
+	await expect(editorArea.locator('[data-testid="source-editor"]')).not.toBeVisible();
+	await expect(editorArea.locator('h1')).toContainText('Updated Heading');
+});
