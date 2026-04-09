@@ -147,7 +147,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <AppShell {sidebarVisible} {isDistractionFree}>
-	{#snippet sidebar()}<Sidebar />{/snippet}
+	{#snippet sidebar()}<Sidebar onOpen={openFile} />{/snippet}
 	{#snippet toolbar()}<Toolbar />{/snippet}
 	{#snippet editor()}
 		<div data-testid="editor-area" class="editor-area">

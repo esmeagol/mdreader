@@ -1,14 +1,20 @@
+<script lang="ts">
+	import RecentFiles from './RecentFiles.svelte';
+
+	interface Props {
+		onOpen: (path: string) => void;
+	}
+	let { onOpen }: Props = $props();
+</script>
+
 <div data-testid="sidebar" class="sidebar">
-	<p class="placeholder">Outline</p>
+	<RecentFiles {onOpen} />
 </div>
 
 <style>
 	.sidebar {
 		padding: 12px 8px;
 		height: 100%;
-	}
-	.placeholder {
-		font-size: 12px;
-		color: var(--color-placeholder);
+		overflow-y: auto;
 	}
 </style>
