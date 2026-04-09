@@ -25,6 +25,7 @@ function extractHeadings(
 }
 
 async function loadFixture(page: import('@playwright/test').Page, markdown: string) {
+	await page.locator('[data-testid="editor-area"] .tiptap').waitFor();
 	await page.evaluate(async ({ md, path }) => {
 		// @ts-expect-error Vite browser runtime import path
 		const { getRichHandle } = await import('/src/lib/editor.ts');
