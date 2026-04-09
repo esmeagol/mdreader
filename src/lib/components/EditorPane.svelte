@@ -26,6 +26,7 @@
 
 	let editorEl: HTMLElement;
 	let editor: Editor;
+	let linkClickHandler: ((e: MouseEvent) => void) | undefined;
 
 	onMount(() => {
 		editor = new Editor({
@@ -54,7 +55,7 @@
 			}
 		});
 
-		editorEl.addEventListener('click', async (e) => {
+		linkClickHandler = async (e: MouseEvent) => {
 			const anchor = (e.target as HTMLElement).closest('a');
 			if (!anchor) return;
 			const href = anchor.getAttribute('href');
@@ -64,7 +65,8 @@
 				const { open } = await import('@tauri-apps/plugin-shell');
 				open(href);
 			}
-		});
+		};
+		editorEl.addEventListener('click', linkClickHandler);
 	});
 
 	$effect(() => {
@@ -85,7 +87,10 @@
 		});
 	});
 
-	onDestroy(() => editor?.destroy());
+	onDestroy(() => {
+		if (linkClickHandler) editorEl?.removeEventListener('click', linkClickHandler);
+		editor?.destroy();
+	});
 </script>
 
 <div bind:this={editorEl} class="editor-mount"></div>
