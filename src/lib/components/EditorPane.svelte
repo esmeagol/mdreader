@@ -120,6 +120,23 @@
 	:global(.tiptap p) {
 		margin: 0.5em 0;
 	}
+	:global(.tiptap blockquote) {
+		margin: 0.75em 0;
+		padding: 0.35em 0 0.35em 1em;
+		border-left: 4px solid var(--color-border);
+		color: var(--color-text-muted);
+		background: var(--color-bg-sidebar);
+		border-radius: 0 6px 6px 0;
+	}
+	:global(.tiptap blockquote p) {
+		margin: 0.35em 0;
+	}
+	:global(.tiptap blockquote p:first-child) {
+		margin-top: 0;
+	}
+	:global(.tiptap blockquote p:last-child) {
+		margin-bottom: 0;
+	}
 	:global(.tiptap strong) {
 		font-weight: 700;
 	}

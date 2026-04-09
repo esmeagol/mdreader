@@ -106,4 +106,13 @@ describe('extended markdown round-trip', () => {
 		editor.destroy();
 		expect(result).toBe(md);
 	});
+
+	it('parses blockquote to blockquote in the DOM', () => {
+		const md = '> First line\n> Second line\n\nAfter';
+		const editor = createExtendedEditor(md);
+		expect(editor.getHTML()).toContain('<blockquote>');
+		expect(editor.getHTML()).toContain('First line');
+		expect(editor.getHTML()).toContain('Second line');
+		editor.destroy();
+	});
 });
