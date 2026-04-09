@@ -95,3 +95,21 @@ test('clicking a heading in sidebar scrolls to its own instance, not the first t
 	// The h2 should now be in the viewport
 	await expect(page.locator('.tiptap h2')).toBeInViewport();
 });
+
+test('active heading is highlighted in sidebar on scroll', async ({ page }) => {
+	await page.goto('/');
+	const editor = page.locator('.tiptap');
+	await editor.click();
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Backspace');
+	await page.keyboard.type('# First\n\n' + 'paragraph\n\n'.repeat(20) + '## Second');
+
+	const secondItem = page.locator('[data-testid="sidebar"]').getByText('Second');
+	await expect(secondItem).not.toHaveClass(/active/);
+
+	await page.locator('.zone-editor').evaluate((el) => {
+		el.scrollTop = el.scrollHeight;
+	});
+
+	await expect(secondItem).toHaveClass(/active/);
+});
