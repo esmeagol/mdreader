@@ -71,9 +71,14 @@
 		return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 	}
 
+	let tauriInvoke: (<T>(cmd: string, args: Record<string, unknown>) => Promise<T>) | null = null;
+
 	async function invokeTauri<T>(command: string, payload: Record<string, unknown>) {
-		const { invoke } = await import('@tauri-apps/api/core');
-		return invoke<T>(command, payload);
+		if (!tauriInvoke) {
+			const { invoke } = await import('@tauri-apps/api/core');
+			tauriInvoke = invoke;
+		}
+		return tauriInvoke<T>(command, payload);
 	}
 
 	async function confirmDiscardChanges(): Promise<boolean> {
@@ -144,6 +149,7 @@
 		if (isTauriRuntime()) {
 			void (async () => {
 				const { invoke } = await import('@tauri-apps/api/core');
+				tauriInvoke = invoke;
 				const paths = await invoke<string[]>('get_recent_files');
 				recentFiles.set(paths);
 			})();
