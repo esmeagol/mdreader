@@ -25,11 +25,14 @@ function extractHeadings(
 }
 
 async function loadFixture(page: import('@playwright/test').Page, markdown: string) {
-	await page.evaluate(async (content) => {
+	await page.evaluate(async ({ md, path }) => {
+		// @ts-expect-error Vite browser runtime import path
+		const { getRichHandle } = await import('/src/lib/editor.ts');
 		// @ts-expect-error Vite browser runtime import path
 		const { document } = await import('/src/lib/stores/document.ts');
-		document.load(content, '/tmp/multi-section.md');
-	}, markdown);
+		getRichHandle()?.setContent(md, { markClean: true });
+		document.load(path);
+	}, { md: markdown, path: '/tmp/multi-section.md' });
 }
 
 test('multi-section markdown file renders every heading in order', async ({ page }) => {

@@ -21,7 +21,10 @@ async function loadViaStore(
 		async ({ md, path }) => {
 			// @ts-expect-error Vite browser runtime import path
 			const { document } = await import('/src/lib/stores/document.ts');
-			document.load(md, path);
+			// @ts-expect-error Vite browser runtime import path
+			const { getRichHandle } = await import('/src/lib/editor.ts');
+			getRichHandle()?.setContent(md, { markClean: true });
+			document.load(path);
 		},
 		{ md: markdown, path: filePath }
 	);

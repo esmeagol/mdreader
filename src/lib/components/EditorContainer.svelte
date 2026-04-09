@@ -2,7 +2,7 @@
 	import { document as doc } from '$lib/stores/document';
 	import EditorPane from './EditorPane.svelte';
 	import SourcePane from './SourcePane.svelte';
-	import { type EditorHandle } from '$lib/editor';
+	import { type EditorHandle, setActiveMode } from '$lib/editor';
 
 	interface Props {
 		editorMode: 'rich' | 'source';
@@ -14,20 +14,25 @@
 	let richHandle: EditorHandle | null = $state(null);
 	let sourceHandle: EditorHandle | null = $state(null);
 
-	function handleChange(md: string) {
-		doc.update(md);
+	function handleChange(_md: string) {
+		// Rich mode: DirtyState PM plugin owns dirty tracking.
+		// Source mode: mark dirty on every change (no PM plugin there).
+		if (editorMode === 'source') doc.markDirty(true);
 	}
 
-	// Push external content changes (file loads) and mode-switch syncs to
-	// the active pane only. The inactive pane retains its undo stack and is
-	// synced once when it becomes active again.
+	// On mode switch: sync content from the pane we're leaving to the one we're
+	// entering. setContent without { markClean } preserves the DirtyState baseline,
+	// so the plugin correctly reports dirty if content differs from the saved file.
 	$effect(() => {
-		const storeContent = $doc.content;
-		if (editorMode === 'rich' && richHandle && richHandle.getContent() !== storeContent) {
-			richHandle.setContent(storeContent);
+		const mode = editorMode;
+		setActiveMode(mode);
+		if (mode === 'source' && richHandle && sourceHandle) {
+			const c = richHandle.getContent();
+			if (sourceHandle.getContent() !== c) sourceHandle.setContent(c);
 		}
-		if (editorMode === 'source' && sourceHandle && sourceHandle.getContent() !== storeContent) {
-			sourceHandle.setContent(storeContent);
+		if (mode === 'rich' && sourceHandle && richHandle) {
+			const c = sourceHandle.getContent();
+			if (richHandle.getContent() !== c) richHandle.setContent(c);
 		}
 	});
 
@@ -44,7 +49,7 @@
 
 <div class:hidden={editorMode !== 'rich'} class="pane-wrap">
 	<EditorPane
-		content={doc.get().content}
+		content=""
 		onChange={handleChange}
 		onReady={(h) => (richHandle = h)}
 		{theme}
@@ -52,7 +57,7 @@
 </div>
 <div class:hidden={editorMode !== 'source'} class="pane-wrap">
 	<SourcePane
-		content={doc.get().content}
+		content=""
 		onChange={handleChange}
 		onReady={(h) => (sourceHandle = h)}
 		{theme}

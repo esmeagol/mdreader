@@ -14,7 +14,7 @@
 	import { common, createLowlight } from 'lowlight';
 	import { getMarkdown } from '$lib/markdown';
 	import { Headings } from '$lib/Headings';
-	import { type EditorHandle } from '$lib/editor';
+	import { type EditorHandle, setRichHandle } from '$lib/editor';
 	import { DirtyState, MARK_CLEAN_KEY } from '$lib/DirtyState';
 	import { WordCount } from '$lib/WordCount';
 	import { document as doc } from '$lib/stores/document';
@@ -66,24 +66,24 @@
 			}
 		});
 
-		onReady?.({
-			setContent(markdown: string) {
+		const handle: EditorHandle = {
+			setContent(markdown: string, opts?: { markClean?: boolean }) {
 				editor.commands.setContent(markdown, { emitUpdate: false });
-				// Reset the DirtyState clean baseline so the freshly loaded
-				// content is treated as the new "saved" snapshot.
-				const { tr } = editor.state;
-				editor.view.dispatch(tr.setMeta(MARK_CLEAN_KEY, true));
+				if (opts?.markClean) {
+					const { tr } = editor.state;
+					editor.view.dispatch(tr.setMeta(MARK_CLEAN_KEY, true));
+				}
 			},
 			getContent(): string {
 				return getMarkdown(editor);
 			},
 			markSaved() {
-				// Reset the DirtyState clean baseline to the current doc
-				// so typing-then-undoing after a save correctly shows clean.
 				const { tr } = editor.state;
 				editor.view.dispatch(tr.setMeta(MARK_CLEAN_KEY, true));
 			}
-		});
+		};
+		setRichHandle(handle);
+		onReady?.(handle);
 
 		linkClickHandler = async (e: MouseEvent) => {
 			const anchor = (e.target as HTMLElement).closest('a');
@@ -112,6 +112,7 @@
 	});
 
 	onDestroy(() => {
+		setRichHandle(null);
 		if (linkClickHandler) editorEl?.removeEventListener('click', linkClickHandler);
 		editor?.destroy();
 	});

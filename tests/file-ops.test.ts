@@ -72,7 +72,7 @@ test('sidebar recent list updates when filePath changes', async ({ page }) => {
 		const { document } = await import('/src/lib/stores/document.ts');
 		// @ts-expect-error Vite browser runtime import path
 		const { recentFiles } = await import('/src/lib/stores/recentFiles.ts');
-		document.load('# Hello', '/tmp/notes.md');
+		document.load('/tmp/notes.md');
 		recentFiles.prepend('/tmp/notes.md');
 	});
 

@@ -4,7 +4,7 @@
 	import { markdown } from '@codemirror/lang-markdown';
 	import { oneDark } from '@codemirror/theme-one-dark';
 	import { EditorState, Annotation } from '@codemirror/state';
-	import { type EditorHandle } from '$lib/editor';
+	import { type EditorHandle, setSourceHandle } from '$lib/editor';
 
 	// Marks transactions dispatched by setContent so the updateListener
 	// doesn't echo them back through onChange.
@@ -40,8 +40,9 @@
 			parent: containerEl
 		});
 
-		onReady?.({
-			setContent(text: string) {
+		const handle: EditorHandle = {
+			// opts.markClean is a no-op for SourcePane (no PM dirty tracking)
+			setContent(text: string, _opts?: { markClean?: boolean }) {
 				const current = view.state.doc.toString();
 				if (current === text) return;
 				view.dispatch({
@@ -53,12 +54,17 @@
 				return view.state.doc.toString();
 			},
 			markSaved() {
-				// SourcePane has no clean-baseline concept; no-op.
+				// no-op: SourcePane has no clean-baseline concept
 			}
-		});
+		};
+		setSourceHandle(handle);
+		onReady?.(handle);
 	});
 
-	onDestroy(() => view?.destroy());
+	onDestroy(() => {
+		setSourceHandle(null);
+		view?.destroy();
+	});
 </script>
 
 <div bind:this={containerEl} data-testid="source-editor" class="source-editor"></div>
