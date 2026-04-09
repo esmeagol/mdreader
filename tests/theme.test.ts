@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
 
+/** Reset stored preference once per test (not on reload — addInitScript would run every navigation). */
+test.beforeEach(async ({ page }) => {
+	await page.goto('/');
+	await page.evaluate(() => localStorage.removeItem('mdreader-theme-preference'));
+});
+
 test.describe('dark color scheme', () => {
 	test.use({ colorScheme: 'dark' });
 
@@ -38,5 +44,14 @@ test.describe('manual theme override', () => {
 			.locator('body')
 			.evaluate((el) => getComputedStyle(el).getPropertyValue('--color-bg').trim());
 		expect(bg).toBe('#ffffff');
+	});
+
+	test('forced light theme survives reload while OS stays dark', async ({ page }) => {
+		await page.goto('/');
+		await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+		await page.keyboard.press('Meta+Shift+T');
+		await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+		await page.reload();
+		await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 	});
 });
