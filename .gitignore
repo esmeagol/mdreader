@@ -32,3 +32,6 @@ src-tauri/gen/
 
 # Local agent/session artifacts
 .specstory/
+
+# Editor — machine-specific (keep shared .vscode/*.json in repo if added later)
+.vscode/settings.json
