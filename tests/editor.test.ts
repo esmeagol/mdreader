@@ -7,6 +7,7 @@ async function loadContent(
 	markdown: string,
 	filePath = '/tmp/test.md'
 ) {
+	await page.locator('[data-testid="editor-area"] .tiptap').waitFor();
 	await page.evaluate(
 		async ({ md, path }) => {
 			// @ts-expect-error Vite browser runtime import path
