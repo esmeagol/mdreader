@@ -7,6 +7,7 @@
 	import EditorContainer from '$lib/components/EditorContainer.svelte';
 	import { document as doc } from '$lib/stores/document';
 	import { recentFiles } from '$lib/stores/recentFiles';
+	import { isTauriRuntime, initTauri, openFile, save, saveAs, newFile } from '$lib/fileService';
 
 	let sidebarVisible = $state(true);
 	let isDistractionFree = $state(false);
@@ -67,89 +68,11 @@
 		window.document.documentElement.style.setProperty('--font-size-editor', `${fontSize}px`);
 	}
 
-	function isTauriRuntime() {
-		return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-	}
-
-	let tauriInvoke: (<T>(cmd: string, args: Record<string, unknown>) => Promise<T>) | null = null;
-
-	async function invokeTauri<T>(command: string, payload: Record<string, unknown>) {
-		if (!tauriInvoke) {
-			const { invoke } = await import('@tauri-apps/api/core');
-			tauriInvoke = invoke;
-		}
-		return tauriInvoke<T>(command, payload);
-	}
-
-	async function confirmDiscardChanges(): Promise<boolean> {
-		if (isTauriRuntime()) {
-			const { ask } = await import('@tauri-apps/plugin-dialog');
-			return ask('You have unsaved changes. Open anyway?', {
-				title: 'Unsaved Changes',
-				kind: 'warning'
-			});
-		}
-		return window.confirm('You have unsaved changes. Open anyway?');
-	}
-
-	async function openFile(path?: string) {
-		if (doc.get().isDirty) {
-			const confirmed = await confirmDiscardChanges();
-			if (!confirmed) return;
-		}
-		if (!isTauriRuntime()) return;
-		let selected = path;
-		if (!selected) {
-			const { open } = await import('@tauri-apps/plugin-dialog');
-			const picked = await open({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
-			if (!picked || Array.isArray(picked)) return;
-			selected = picked;
-		}
-		const content = await invokeTauri<string>('open_file', { path: selected });
-		doc.load(content, selected);
-		recentFiles.prepend(selected);
-	}
-
-	async function save() {
-		if (!isTauriRuntime()) return;
-		const { content, filePath } = doc.get();
-		if (!filePath) {
-			await saveAs();
-			return;
-		}
-		try {
-			await invokeTauri<void>('save_file', { content });
-			doc.markSaved();
-		} catch (e) {
-			doc.markSaveError(e instanceof Error ? e.message : String(e));
-		}
-	}
-
-	async function saveAs() {
-		if (!isTauriRuntime()) return;
-		const { content } = doc.get();
-		const { save } = await import('@tauri-apps/plugin-dialog');
-		const path = await save({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
-		if (!path || Array.isArray(path)) return;
-		try {
-			await invokeTauri<void>('set_current_file', { path });
-			await invokeTauri<void>('save_file', { content });
-			doc.setFilePath(path);
-			doc.markSaved();
-		} catch (e) {
-			doc.markSaveError(e instanceof Error ? e.message : String(e));
-		}
-	}
-
-	function newFile() {
-		doc.reset();
-	}
-
 	onMount(() => {
 		if (isTauriRuntime()) {
 			void (async () => {
+				await initTauri();
 				const { invoke } = await import('@tauri-apps/api/core');
-				tauriInvoke = invoke;
 				const paths = await invoke<string[]>('get_recent_files');
 				recentFiles.set(paths);
 			})();
