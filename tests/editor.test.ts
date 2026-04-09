@@ -47,6 +47,38 @@ test('bold markdown renders as strong element', async ({ page }) => {
 	await expect(editor.locator('strong')).toContainText('bold text');
 });
 
+test('Cmd+B toggles bold for selected text when editor is focused', async ({ page }) => {
+	await page.goto('/');
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await editor.click();
+	await page.keyboard.type('hello');
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Meta+b');
+	await expect(editor.locator('strong')).toContainText('hello');
+	await page.keyboard.press('Meta+b');
+	await expect(editor.locator('strong')).toHaveCount(0);
+});
+
+test('Cmd+I toggles italic for selected text when editor is focused', async ({ page }) => {
+	await page.goto('/');
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await editor.click();
+	await page.keyboard.type('hello');
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Meta+i');
+	await expect(editor.locator('em')).toContainText('hello');
+});
+
+test('Cmd+` toggles inline code for selected text when editor is focused', async ({ page }) => {
+	await page.goto('/');
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await editor.click();
+	await page.keyboard.type('snippet');
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Meta+`');
+	await expect(editor.locator('code')).toContainText('snippet');
+});
+
 test('typing updates word count in status bar', async ({ page }) => {
 	await page.goto('/');
 	const editor = page.locator('[data-testid="editor-area"] .tiptap');
