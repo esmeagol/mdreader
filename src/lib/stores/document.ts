@@ -5,6 +5,7 @@ export interface DocumentState {
 	filePath: string | null;
 	isDirty: boolean;
 	lastSaved: Date | null;
+	saveError: string | null;
 }
 
 function createDocumentStore() {
@@ -12,23 +13,27 @@ function createDocumentStore() {
 		content: '',
 		filePath: null,
 		isDirty: false,
-		lastSaved: null
+		lastSaved: null,
+		saveError: null
 	});
 
 	return {
 		subscribe: store.subscribe,
 		get: () => getStore(store),
 		load(content: string, filePath: string | null) {
-			store.set({ content, filePath, isDirty: false, lastSaved: null });
+			store.set({ content, filePath, isDirty: false, lastSaved: null, saveError: null });
 		},
 		update(content: string) {
 			store.update((s) => ({ ...s, content, isDirty: true }));
 		},
 		markSaved() {
-			store.update((s) => ({ ...s, isDirty: false, lastSaved: new Date() }));
+			store.update((s) => ({ ...s, isDirty: false, lastSaved: new Date(), saveError: null }));
+		},
+		markSaveError(message: string) {
+			store.update((s) => ({ ...s, saveError: message }));
 		},
 		reset() {
-			store.set({ content: '', filePath: null, isDirty: false, lastSaved: null });
+			store.set({ content: '', filePath: null, isDirty: false, lastSaved: null, saveError: null });
 		}
 	};
 }

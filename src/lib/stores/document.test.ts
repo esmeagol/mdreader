@@ -34,4 +34,21 @@ describe('document store', () => {
 		expect(document.get().filePath).toBeNull();
 		expect(document.get().isDirty).toBe(false);
 	});
+
+	it('markSaveError sets error message', () => {
+		document.markSaveError('Could not write file: permission denied');
+		expect(document.get().saveError).toBe('Could not write file: permission denied');
+	});
+
+	it('markSaved clears saveError', () => {
+		document.markSaveError('some error');
+		document.markSaved();
+		expect(document.get().saveError).toBeNull();
+	});
+
+	it('load clears saveError', () => {
+		document.markSaveError('some error');
+		document.load('# New', '/new.md');
+		expect(document.get().saveError).toBeNull();
+	});
 });

@@ -110,8 +110,12 @@
 			await saveAs();
 			return;
 		}
-		await invokeTauri<void>('save_file', { content });
-		doc.markSaved();
+		try {
+			await invokeTauri<void>('save_file', { content });
+			doc.markSaved();
+		} catch (e) {
+			doc.markSaveError(e instanceof Error ? e.message : String(e));
+		}
 	}
 
 	async function saveAs() {
@@ -120,10 +124,14 @@
 		const { save } = await import('@tauri-apps/plugin-dialog');
 		const path = await save({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
 		if (!path || Array.isArray(path)) return;
-		await invokeTauri<void>('set_current_file', { path });
-		await invokeTauri<void>('save_file', { content });
-		doc.load(content, path);
-		doc.markSaved();
+		try {
+			await invokeTauri<void>('set_current_file', { path });
+			await invokeTauri<void>('save_file', { content });
+			doc.load(content, path);
+			doc.markSaved();
+		} catch (e) {
+			doc.markSaveError(e instanceof Error ? e.message : String(e));
+		}
 	}
 
 	function newFile() {
@@ -133,7 +141,7 @@
 	onMount(() => {
 		const intervalId = window.setInterval(() => {
 			const { isDirty, filePath } = doc.get();
-			if (isDirty && filePath) void save();
+			if (isDirty && filePath) save();
 		}, 30_000);
 
 		let unlisten: (() => void) | undefined;

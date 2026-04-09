@@ -34,6 +34,32 @@ test('opening a file when dirty prompts for confirmation', async ({ page }) => {
 	await expect(page).toHaveTitle('• Untitled — mdreader');
 });
 
+test('save error is shown in status bar', async ({ page }) => {
+	await page.goto('/');
+
+	// Inject a save error via the store
+	await page.evaluate(async () => {
+		// @ts-expect-error Vite browser runtime import path
+		const { document } = await import('/src/lib/stores/document.ts');
+		document.markSaveError('Disk full');
+	});
+
+	await expect(page.locator('[data-testid="status-bar"]')).toContainText('Disk full');
+});
+
+test('save error clears after markSaved', async ({ page }) => {
+	await page.goto('/');
+
+	await page.evaluate(async () => {
+		// @ts-expect-error Vite browser runtime import path
+		const { document } = await import('/src/lib/stores/document.ts');
+		document.markSaveError('Disk full');
+		document.markSaved();
+	});
+
+	await expect(page.locator('[data-testid="status-bar"]')).not.toContainText('Disk full');
+});
+
 test('opening a file when clean skips confirmation', async ({ page }) => {
 	await page.goto('/');
 
