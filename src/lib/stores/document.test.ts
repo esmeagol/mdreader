@@ -13,11 +13,11 @@ describe('document store', () => {
 		expect(document.get().filePath).toBe('/path/to/file.md');
 	});
 
-	it('update sets content and marks dirty', () => {
+	it('update sets content without changing isDirty (DirtyState plugin owns the flag)', () => {
 		document.load('initial', '/file.md');
 		document.update('changed');
 		expect(document.get().content).toBe('changed');
-		expect(document.get().isDirty).toBe(true);
+		expect(document.get().isDirty).toBe(false); // plugin calls markDirty separately
 	});
 
 	it('markSaved clears dirty flag', () => {
@@ -55,9 +55,19 @@ describe('document store', () => {
 	it('setFilePath updates filePath without touching content or isDirty', () => {
 		document.load('# Hello', '/old.md');
 		document.update('# Hello edited');
+		document.markDirty(true);
 		document.setFilePath('/new.md');
 		expect(document.get().filePath).toBe('/new.md');
 		expect(document.get().content).toBe('# Hello edited');
 		expect(document.get().isDirty).toBe(true);
+	});
+
+	it('markDirty sets isDirty independently of content', () => {
+		document.load('initial', '/file.md');
+		document.markDirty(true);
+		expect(document.get().isDirty).toBe(true);
+		expect(document.get().content).toBe('initial');
+		document.markDirty(false);
+		expect(document.get().isDirty).toBe(false);
 	});
 });

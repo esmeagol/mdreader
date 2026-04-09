@@ -15,6 +15,8 @@
 	import { getMarkdown } from '$lib/markdown';
 	import { HeadingId } from '$lib/HeadingId';
 	import { type EditorHandle } from '$lib/editor';
+	import { DirtyState, MARK_CLEAN_KEY } from '$lib/DirtyState';
+	import { document as doc } from '$lib/stores/document';
 
 	const lowlight = createLowlight(common);
 
@@ -37,6 +39,7 @@
 			extensions: [
 				StarterKit.configure({ codeBlock: false, strike: false }),
 				HeadingId,
+				DirtyState((isDirty) => doc.markDirty(isDirty)),
 				Markdown,
 				TaskList,
 				TaskItem.configure({ nested: true }),
@@ -62,9 +65,19 @@
 		onReady?.({
 			setContent(markdown: string) {
 				editor.commands.setContent(markdown, { emitUpdate: false });
+				// Reset the DirtyState clean baseline so the freshly loaded
+				// content is treated as the new "saved" snapshot.
+				const { tr } = editor.state;
+				editor.view.dispatch(tr.setMeta(MARK_CLEAN_KEY, true));
 			},
 			getContent(): string {
 				return getMarkdown(editor);
+			},
+			markSaved() {
+				// Reset the DirtyState clean baseline to the current doc
+				// so typing-then-undoing after a save correctly shows clean.
+				const { tr } = editor.state;
+				editor.view.dispatch(tr.setMeta(MARK_CLEAN_KEY, true));
 			}
 		});
 

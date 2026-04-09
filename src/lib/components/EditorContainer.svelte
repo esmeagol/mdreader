@@ -21,10 +21,22 @@
 		handle = h;
 	}
 
+	// Push externally-loaded content into the editor when the store changes.
 	$effect(() => {
 		const storeContent = $doc.content;
 		if (handle && handle.getContent() !== storeContent) {
 			handle.setContent(storeContent);
+		}
+	});
+
+	// After a save, reset the DirtyState clean baseline so that undoing back
+	// to the saved content correctly shows the document as clean.
+	let lastSaved: Date | null = null;
+	$effect(() => {
+		const saved = $doc.lastSaved;
+		if (saved && saved !== lastSaved && handle) {
+			lastSaved = saved;
+			handle.markSaved();
 		}
 	});
 </script>

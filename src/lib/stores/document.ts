@@ -24,7 +24,10 @@ function createDocumentStore() {
 			store.set({ content, filePath, isDirty: false, lastSaved: null, saveError: null });
 		},
 		update(content: string) {
-			store.update((s) => ({ ...s, content, isDirty: true }));
+			store.update((s) => ({ ...s, content }));
+		},
+		markDirty(isDirty: boolean) {
+			store.update((s) => ({ ...s, isDirty }));
 		},
 		markSaved() {
 			store.update((s) => ({ ...s, isDirty: false, lastSaved: new Date(), saveError: null }));

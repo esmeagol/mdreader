@@ -11,4 +11,6 @@ export interface EditorHandle {
 	setContent(markdown: string): void;
 	/** Return the current content as Markdown. */
 	getContent(): string;
+	/** Reset the DirtyState clean baseline to the current doc (called after save). */
+	markSaved(): void;
 }
