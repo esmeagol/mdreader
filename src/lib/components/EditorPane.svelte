@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, onDestroy, setContext } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { Editor } from '@tiptap/core';
 	import StarterKit from '@tiptap/starter-kit';
 	import { Markdown } from 'tiptap-markdown';
@@ -14,34 +14,22 @@
 	import { common, createLowlight } from 'lowlight';
 	import { getMarkdown } from '$lib/markdown';
 	import { HeadingId } from '$lib/HeadingId';
-	import { type EditorHandle, EDITOR_HANDLE_KEY } from '$lib/editor';
+	import { type EditorHandle } from '$lib/editor';
 
 	const lowlight = createLowlight(common);
 
 	interface Props {
 		content: string;
 		onChange: (md: string) => void;
+		onReady?: (handle: EditorHandle) => void;
 		theme: 'light' | 'dark';
 	}
 
-	let { content, onChange, theme }: Props = $props();
+	let { content, onChange, onReady, theme }: Props = $props();
 
 	let editorEl: HTMLElement;
 	let editor: Editor;
 	let linkClickHandler: ((e: MouseEvent) => void) | undefined;
-
-	// Expose EditorHandle via context so parent components can drive the editor
-	// imperatively without reactive prop round-trips.
-	setContext<EditorHandle>(EDITOR_HANDLE_KEY, {
-		setContent(markdown: string) {
-			if (!editor) return;
-			editor.commands.setContent(markdown, { emitUpdate: false });
-		},
-		getContent(): string {
-			if (!editor) return '';
-			return getMarkdown(editor);
-		}
-	});
 
 	onMount(() => {
 		editor = new Editor({
@@ -71,6 +59,15 @@
 			}
 		});
 
+		onReady?.({
+			setContent(markdown: string) {
+				editor.commands.setContent(markdown, { emitUpdate: false });
+			},
+			getContent(): string {
+				return getMarkdown(editor);
+			}
+		});
+
 		linkClickHandler = async (e: MouseEvent) => {
 			const anchor = (e.target as HTMLElement).closest('a');
 			if (!anchor) return;
@@ -83,12 +80,6 @@
 			}
 		};
 		editorEl.addEventListener('click', linkClickHandler);
-	});
-
-	$effect(() => {
-		if (editor && content !== getMarkdown(editor)) {
-			editor.commands.setContent(content, { emitUpdate: false });
-		}
 	});
 
 	$effect(() => {

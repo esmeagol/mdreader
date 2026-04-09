@@ -1,9 +1,10 @@
 /**
- * EditorHandle — imperative interface exposed by EditorPane via Svelte context.
+ * EditorHandle — imperative interface returned via the EditorPane `onReady`
+ * callback once the editor is mounted.
  *
- * Components that need to drive the editor (e.g. EditorContainer loading
- * external content) call these methods instead of passing reactive props,
- * which eliminates the string-comparison guards and the third copy of content.
+ * Consumers (e.g. EditorContainer) call setContent to push external content
+ * into the editor without a reactive prop round-trip, eliminating the need for
+ * a local content copy and string-comparison guards.
  */
 export interface EditorHandle {
 	/** Replace editor content without marking the document dirty. */
@@ -11,5 +12,3 @@ export interface EditorHandle {
 	/** Return the current content as Markdown. */
 	getContent(): string;
 }
-
-export const EDITOR_HANDLE_KEY = Symbol('editorHandle');

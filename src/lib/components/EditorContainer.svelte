@@ -2,6 +2,7 @@
 	import { document as doc } from '$lib/stores/document';
 	import EditorPane from './EditorPane.svelte';
 	import SourcePane from './SourcePane.svelte';
+	import { type EditorHandle } from '$lib/editor';
 
 	interface Props {
 		editorMode: 'rich' | 'source';
@@ -10,22 +11,26 @@
 
 	let { editorMode, theme }: Props = $props();
 
-	let content = $state(doc.get().content);
+	let handle: EditorHandle | null = $state(null);
 
 	function handleChange(md: string) {
-		content = md;
-		if (md === doc.get().content) return;
 		doc.update(md);
+	}
+
+	function handleReady(h: EditorHandle) {
+		handle = h;
 	}
 
 	$effect(() => {
 		const storeContent = $doc.content;
-		if (storeContent !== content) content = storeContent;
+		if (handle && handle.getContent() !== storeContent) {
+			handle.setContent(storeContent);
+		}
 	});
 </script>
 
 {#if editorMode === 'rich'}
-	<EditorPane {content} onChange={handleChange} {theme} />
+	<EditorPane content={doc.get().content} onChange={handleChange} onReady={handleReady} {theme} />
 {:else}
-	<SourcePane {content} onChange={handleChange} {theme} />
+	<SourcePane content={$doc.content} onChange={handleChange} {theme} />
 {/if}
