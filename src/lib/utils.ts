@@ -1,5 +1,8 @@
-export function formatWordCount(text: string): string {
-	const count = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+export function countWords(text: string): number {
+	return text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+}
+
+export function formatWordCount(count: number): string {
 	return count === 1 ? '1 word' : `${count} words`;
 }
 

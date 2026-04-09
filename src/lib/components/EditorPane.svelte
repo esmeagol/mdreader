@@ -16,7 +16,9 @@
 	import { HeadingId } from '$lib/HeadingId';
 	import { type EditorHandle } from '$lib/editor';
 	import { DirtyState, MARK_CLEAN_KEY } from '$lib/DirtyState';
+	import { WordCount } from '$lib/WordCount';
 	import { document as doc } from '$lib/stores/document';
+	import { wordCount } from '$lib/stores/wordCount';
 
 	const lowlight = createLowlight(common);
 
@@ -40,6 +42,7 @@
 				StarterKit.configure({ codeBlock: false, strike: false }),
 				HeadingId,
 				DirtyState((isDirty) => doc.markDirty(isDirty)),
+				WordCount((count) => wordCount.set(count)),
 				Markdown,
 				TaskList,
 				TaskItem.configure({ nested: true }),

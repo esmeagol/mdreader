@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { document as doc } from '$lib/stores/document';
+	import { wordCount } from '$lib/stores/wordCount';
 	import { formatWordCount } from '$lib/utils';
 </script>
 
@@ -7,7 +8,7 @@
 	{#if $doc.saveError}
 		<span class="save-error" title={$doc.saveError}>⚠ {$doc.saveError}</span>
 	{:else}
-		<span>{formatWordCount($doc.content)}</span>
+		<span>{formatWordCount($wordCount)}</span>
 	{/if}
 </footer>
 
