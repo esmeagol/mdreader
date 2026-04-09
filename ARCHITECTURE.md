@@ -34,9 +34,13 @@ src/
     ├── stores/
     │   ├── document.ts            # File metadata only: filePath, isDirty, lastSaved, saveError
     │   ├── headings.ts            # Heading list derived by PM plugin; read by Sidebar
-    │   └── wordCount.ts           # Word count derived by PM plugin; read by StatusBar
+    │   ├── wordCount.ts           # Word count derived by PM plugin; read by StatusBar
+    │   └── recentFiles.ts         # Recent paths; hydrated from Tauri on mount
     ├── editor.ts                  # EditorHandle interface + module-level singletons
     ├── fileService.ts             # All Tauri file I/O (open, save, saveAs, newFile)
+    ├── tauriAppMenu.ts            # Native menu (Tauri 2 Menu API); installTauriAppMenu
+    ├── appMenuDispatch.ts         # Stable menu item ids → app actions (shared with tests)
+    ├── markdown.ts                # getMarkdown(editor) — shared serializer for app + tests
     ├── DirtyState.ts              # TipTap extension: tracks dirty via PM doc.eq()
     ├── Headings.ts                # TipTap extension: extracts headings + stamps heading IDs
     ├── WordCount.ts               # TipTap extension: counts words from PM doc

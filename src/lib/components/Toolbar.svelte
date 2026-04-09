@@ -1,1 +1,1 @@
-<div class="toolbar"><!-- Formatting toolbar — Day 12 --></div>
+<div class="toolbar"><!-- Optional formatting buttons; Cmd+B/I/` handled in EditorPane --></div>

@@ -16,8 +16,12 @@ communicate, check the architecture first.
 
 ## Current implementation (authoritative where it differs from older day steps)
 
-The day-by-day sections below are the original TDD walkthrough. When a snippet conflicts
-with the repository, treat this section and [ARCHITECTURE.md](ARCHITECTURE.md) as correct.
+**Days 3–12** match the repo and carry a **✓** on each day header. **Day 13 onward** may still
+describe planned work — implement those days against this section when you reach them. Older
+revisions of this file showed superseded snippets (e.g. `content` on the document store);
+those have been updated or replaced with pointers here.
+
+When anything still looks ambiguous, treat this section and [ARCHITECTURE.md](ARCHITECTURE.md) as correct.
 
 ### Architecture summary
 
@@ -33,7 +37,7 @@ Key files that supersede their day-step equivalents:
 | `src/lib/editor.ts` | Day 4 EditorHandle (module singletons, `getActiveContent`) |
 | `src/lib/fileService.ts` | Day 5–8 inline `invoke` in `+page.svelte` |
 | `src/lib/DirtyState.ts` | Day 6 `emitUpdate: false` / suppress-flag approach |
-| `src/lib/WordCount.ts` | Day 6 word count via store content |
+| `src/lib/WordCount.ts` | Day 6 word count via `wordCount` store (not document `content`) |
 | `src/lib/Headings.ts` | Day 10 separate `HeadingId.ts` + heading extraction |
 | `src/lib/components/EditorContainer.svelte` | Day 4–8 EditorContainer (no local content state) |
 | `src/lib/components/EditorPane.svelte` | Day 4 EditorPane (PM plugins, `onReady` callback) |
@@ -41,9 +45,9 @@ Key files that supersede their day-step equivalents:
 
 ### Tauri capabilities
 
-`src-tauri/capabilities/default.json` grants `core:default`, `core:path:default`, dialog
-plugins (`dialog:allow-open`, `dialog:allow-save`, `dialog:allow-ask`), `shell:allow-open`,
-and **`core:window:allow-close`** plus **`core:window:allow-destroy`**. The destroy permission
+`src-tauri/capabilities/default.json` grants `core:default`, **`core:menu:default`** (native app menu),
+`core:path:default`, dialog plugins (`dialog:allow-open`, `dialog:allow-save`, `dialog:allow-ask`),
+`shell:allow-open`, and **`core:window:allow-close`** plus **`core:window:allow-destroy`**. The destroy permission
 matters for Tauri 2’s default close path: `onCloseRequested` finishes by calling `destroy()`
 when the user does not cancel.
 
@@ -123,8 +127,8 @@ Tests that need a file loaded use a two-step evaluate mirroring `fileService.ope
 ```typescript
 async function loadContent(page, markdown, filePath) {
 	await page.evaluate(async ({ md, path }) => {
-		const { getRichHandle } = await import(‘/src/lib/editor.ts’);
-		const { document } = await import(‘/src/lib/stores/document.ts’);
+		const { getRichHandle } = await import('/src/lib/editor.ts');
+		const { document } = await import('/src/lib/stores/document.ts');
 		getRichHandle()?.setContent(md, { markClean: true });
 		document.load(path);
 	}, { md: markdown, path: filePath });
@@ -148,543 +152,76 @@ normal paragraphs.
 
 ## Day 2 — Test Infrastructure ✓
 
-**Done.** Vitest wired with jsdom, `formatWordCount` utility and tests, Rust `sanity_check`
-test, both wired into CI.
+**Done.** Vitest wired with jsdom, `formatWordCount` / title helpers and tests, Rust tests under
+`src-tauri` (`file_ops`, `recent_files`, `save_file` helpers, etc.), all wired into CI.
 
 ---
 
-## Day 3 — App Shell
+## Day 3 — App Shell ✓
 
-**Goal:** Document store, AppShell layout, StatusBar, and the central keyboard shortcut
-handler. No editor logic yet — just the structural skeleton everything else will plug into.
+**Goal:** Metadata-only document store, AppShell layout, status bar, global CSS, themed window
+title, and the central keyboard shortcut handler. Rich/source editors and file I/O ship in
+later days; the shell hosts `EditorContainer` once the editor exists.
 
-### Step 3.1 — Create the document store
+**✓ Done.** Canonical details: [Current implementation](#current-implementation-authoritative-where-it-differs-from-older-day-steps).
 
-The `document` store is the only shared state in the app. It exposes named operations — not
-a raw setter — so mutations are traceable and debuggable.
+### Step 3.1 — Document store (metadata only)
 
-Create `src/lib/stores/document.ts`:
+`src/lib/stores/document.ts` — writable store, **no** `content` / `update()`. Shape:
+`filePath`, `isDirty`, `lastSaved`, `saveError`. Operations: `load`, `markDirty`, `markSaved`,
+`setFilePath`, `markSaveError`, `reset`. Tests: `document.test.ts` with `beforeEach` → `reset()`.
 
-```typescript
-interface DocumentState {
-	content: string;
-	filePath: string | null;
-	isDirty: boolean;
-	lastSaved: Date | null;
-}
+### Step 3.2 — Title helpers and status bar
 
-function createDocumentStore() {
-	let state = $state<DocumentState>({
-		content: '',
-		filePath: null,
-		isDirty: false,
-		lastSaved: null
-	});
+`utils.ts`: `documentDisplayName`, `formatTitle`, `formatWordCount`, `countWords` + tests.
+`+layout.svelte`: `$doc` → `formatTitle`; OS `data-theme`. `StatusBar.svelte`: basename, dirty
+bullet, `saveError`, **`$wordCount`** (from `WordCount` PM plugin once the editor exists).
 
-	return {
-		get: () => state,
-		// Called when a file is opened or a new file is created
-		load(content: string, filePath: string | null) {
-			state = { content, filePath, isDirty: false, lastSaved: null };
-		},
-		// Called on every keystroke in the editor
-		update(content: string) {
-			state = { ...state, content, isDirty: true };
-		},
-		// Called after a successful save
-		markSaved() {
-			state = { ...state, isDirty: false, lastSaved: new Date() };
-		},
-		// Called by Cmd+N
-		reset() {
-			state = { content: '', filePath: null, isDirty: false, lastSaved: null };
-		}
-	};
-}
+### Step 3.3 — Layout tests
 
-export const document = createDocumentStore();
-```
-
-Write unit tests for the store operations in `src/lib/stores/document.test.ts`:
-
-```typescript
-import { describe, it, expect } from 'vitest';
-import { document } from './document';
-
-describe('document store', () => {
-	it('load sets content and clears dirty flag', () => {
-		document.load('# Hello', '/path/to/file.md');
-		expect(document.get().content).toBe('# Hello');
-		expect(document.get().isDirty).toBe(false);
-		expect(document.get().filePath).toBe('/path/to/file.md');
-	});
-
-	it('update sets content and marks dirty', () => {
-		document.load('initial', '/file.md');
-		document.update('changed');
-		expect(document.get().content).toBe('changed');
-		expect(document.get().isDirty).toBe(true);
-	});
-
-	it('markSaved clears dirty flag', () => {
-		document.update('some content');
-		document.markSaved();
-		expect(document.get().isDirty).toBe(false);
-		expect(document.get().lastSaved).toBeInstanceOf(Date);
-	});
-
-	it('reset returns to empty state', () => {
-		document.load('# Content', '/file.md');
-		document.reset();
-		expect(document.get().content).toBe('');
-		expect(document.get().filePath).toBeNull();
-		expect(document.get().isDirty).toBe(false);
-	});
-});
-```
-
-Run — fail because the module doesn't exist yet:
-
-```bash
-npm run test:unit
-# Expected: Error — cannot find module './document'
-```
-
-Implement the store, then run again:
-
-```bash
-npm run test:unit
-# Expected: 4 passed
-```
-
-> **Note on runes in tests:** Svelte 5 `$state()` runes require the Svelte compiler. If
-> Vitest throws a "runes not available outside Svelte" error, configure Vitest to use the
-> Svelte plugin: add `plugins: [svelte()]` to the `test` block in `vite.config.ts`.
-> Alternatively, implement the store with a plain Svelte `writable` store and expose the
-> same named-operation API — both approaches satisfy the architecture.
-
-### Step 3.2 — Add `formatTitle` utility and tests
-
-Add to `src/lib/utils.ts`:
-
-```typescript
-export function formatTitle(filePath: string | null, isDirty: boolean): string {
-	const base = filePath ? filePath.split('/').pop()! : 'Untitled';
-	return isDirty ? `• ${base} — mdreader` : `${base} — mdreader`;
-}
-```
-
-Add to `src/lib/utils.test.ts`:
-
-```typescript
-import { formatTitle } from './utils';
-
-describe('formatTitle', () => {
-	it('shows filename when clean', () => {
-		expect(formatTitle('/docs/notes.md', false)).toBe('notes.md — mdreader');
-	});
-	it('shows bullet when dirty', () => {
-		expect(formatTitle('/docs/notes.md', true)).toBe('• notes.md — mdreader');
-	});
-	it('shows Untitled for new file', () => {
-		expect(formatTitle(null, false)).toBe('Untitled — mdreader');
-	});
-});
-```
-
-```bash
-npm run test:unit
-# Expected: all pass
-```
-
-### Step 3.3 — Write failing layout tests
-
-Create `tests/layout.test.ts`:
-
-```typescript
-import { test, expect } from '@playwright/test';
-
-test('app has sidebar panel', async ({ page }) => {
-	await page.goto('/');
-	await expect(page.locator('[data-testid="sidebar"]')).toBeVisible();
-});
-
-test('app has editor panel', async ({ page }) => {
-	await page.goto('/');
-	await expect(page.locator('[data-testid="editor-area"]')).toBeVisible();
-});
-
-test('app has status bar', async ({ page }) => {
-	await page.goto('/');
-	await expect(page.locator('[data-testid="status-bar"]')).toBeVisible();
-});
-
-test('sidebar is to the left of editor', async ({ page }) => {
-	await page.goto('/');
-	const sidebar = await page.locator('[data-testid="sidebar"]').boundingBox();
-	const editor = await page.locator('[data-testid="editor-area"]').boundingBox();
-	expect(sidebar!.x).toBeLessThan(editor!.x);
-});
-
-test('status bar is below editor', async ({ page }) => {
-	await page.goto('/');
-	const editor = await page.locator('[data-testid="editor-area"]').boundingBox();
-	const statusBar = await page.locator('[data-testid="status-bar"]').boundingBox();
-	expect(editor!.y).toBeLessThan(statusBar!.y);
-});
-```
+`tests/layout.test.ts` — sidebar, editor, status bar, **Untitled** (`data-testid="document-title"`),
+geometry. **6 tests** when complete.
 
 ```bash
 npx playwright test tests/layout.test.ts
-# Expected: 5 failed
+# Expected: 6 passed
 ```
 
-### Step 3.4 — Global CSS: design tokens and reset
+### Step 3.4 — Global CSS
 
-Create `src/app.css`. This file owns all design tokens and the global reset. Nothing else
-in the codebase hardcodes a colour or dimension value.
+`src/app.css` — tokens, light/dark, reset. Scrollbar stays on `.zone-editor`.
 
-```css
-:root {
-	--sidebar-width: 220px;
-	--toolbar-height: 0px; /* empty slot — set non-zero when toolbar is built */
-	--status-bar-height: 28px;
-	--editor-max-width: 1100px;
-	--font-size-editor: 16px;
+### Step 3.5 — AppShell
 
-	--color-border: #e0e0e0;
-	--color-bg: #ffffff;
-	--color-bg-sidebar: #f5f5f5;
-	--color-bg-status: #f8f8f8;
-	--color-text: #1a1a1a;
-	--color-text-muted: #888888;
-	--color-placeholder: #bbbbbb;
-}
+`AppShell.svelte` — grid (sidebar | toolbar + editor, full-width status); `sidebar-hidden`,
+`distraction-free`.
 
-[data-theme='dark'] {
-	--color-border: #3a3a3a;
-	--color-bg: #1e1e1e;
-	--color-bg-sidebar: #252525;
-	--color-bg-status: #2a2a2a;
-	--color-text: #d4d4d4;
-	--color-text-muted: #888888;
-	--color-placeholder: #555555;
-}
+### Step 3.6 — Zone components
 
-*,
-*::before,
-*::after {
-	box-sizing: border-box;
-	margin: 0;
-	padding: 0;
-}
+Live **Sidebar** includes recent files + outline (Days 9–11). **Toolbar** remains an optional
+placeholder. **StatusBar** — see Step 3.2.
 
-body {
-	height: 100vh;
-	overflow: hidden;
-	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-	background: var(--color-bg);
-	color: var(--color-text);
-}
-```
+### Step 3.7 — `+page.svelte`
 
-Update `src/routes/+layout.svelte` to import the CSS, drive `<title>` reactively from the
-document store, and set the theme from the OS preference:
+Shortcuts → `$lib/fileService` (`openFile`, `save`, `saveAs`, `newFile`). Editor area →
+`EditorContainer`. `onMount`: `loadRecentFiles()`, auto-save interval, native menu + close
+dialog when running inside Tauri.
 
-```svelte
-<script lang="ts">
-	import '../app.css';
-	import favicon from '$lib/assets/favicon.svg';
-	import { document as doc } from '$lib/stores/document';
-	import { formatTitle } from '$lib/utils';
-
-	let { children } = $props();
-
-	// Drive <title> from document store — never set document.title imperatively elsewhere
-	$effect(() => {
-		const { filePath, isDirty } = doc.get();
-		window.document.title = formatTitle(filePath, isDirty);
-	});
-
-	// Set data-theme from OS preference — CSS cascade handles the rest
-	$effect(() => {
-		const mq = window.matchMedia('(prefers-color-scheme: dark)');
-		const apply = () => {
-			window.document.documentElement.dataset.theme = mq.matches ? 'dark' : 'light';
-		};
-		apply();
-		mq.addEventListener('change', apply);
-		return () => mq.removeEventListener('change', apply);
-	});
-</script>
-
-<svelte:head>
-	<link rel="icon" href={favicon} />
-</svelte:head>
-
-{@render children()}
-```
-
-### Step 3.5 — Build AppShell
-
-Create `src/lib/components/AppShell.svelte`. This component owns the grid and nothing else.
-
-```svelte
-<script lang="ts">
-	interface Props {
-		sidebar: import('svelte').Snippet;
-		toolbar: import('svelte').Snippet;
-		editor: import('svelte').Snippet;
-		statusbar: import('svelte').Snippet;
-		sidebarVisible: boolean;
-		isDistractionFree: boolean;
-	}
-
-	let { sidebar, toolbar, editor, statusbar, sidebarVisible, isDistractionFree }: Props = $props();
-</script>
-
-<div
-	class="app-shell"
-	class:sidebar-hidden={!sidebarVisible}
-	class:distraction-free={isDistractionFree}
->
-	<aside class="zone-sidebar">{@render sidebar()}</aside>
-	<div class="zone-toolbar">{@render toolbar()}</div>
-	<main class="zone-editor">{@render editor()}</main>
-	<footer class="zone-status">{@render statusbar()}</footer>
-</div>
-
-<style>
-	.app-shell {
-		display: grid;
-		grid-template-columns: var(--sidebar-width) 1fr;
-		grid-template-rows: var(--toolbar-height) 1fr var(--status-bar-height);
-		grid-template-areas:
-			'sidebar toolbar'
-			'sidebar editor'
-			'status  status';
-		height: 100vh;
-	}
-
-	.zone-sidebar {
-		grid-area: sidebar;
-		border-right: 1px solid var(--color-border);
-		background: var(--color-bg-sidebar);
-		overflow-y: auto;
-	}
-	.zone-toolbar {
-		grid-area: toolbar;
-		border-bottom: 1px solid var(--color-border);
-		overflow: hidden;
-	}
-	.zone-editor {
-		grid-area: editor;
-		overflow-y: auto;
-	}
-	.zone-status {
-		grid-area: status;
-		display: flex;
-		align-items: center;
-		padding: 0 12px;
-		font-size: 11px;
-		border-top: 1px solid var(--color-border);
-		background: var(--color-bg-status);
-		color: var(--color-text-muted);
-	}
-
-	/* Distraction-free: hide sidebar and status bar */
-	.distraction-free {
-		grid-template-columns: 0 1fr;
-	}
-	.distraction-free .zone-status {
-		display: none;
-	}
-
-	/* Collapsed sidebar */
-	.sidebar-hidden {
-		grid-template-columns: 0 1fr;
-	}
-	.sidebar-hidden .zone-sidebar {
-		overflow: hidden;
-		border-right: none;
-	}
-</style>
-```
-
-### Step 3.6 — Build shell components
-
-Create placeholder components for zones not yet implemented.
-
-`src/lib/components/Sidebar.svelte`:
-
-```svelte
-<div data-testid="sidebar" class="sidebar">
-	<p class="placeholder">Outline</p>
-</div>
-
-<style>
-	.sidebar {
-		padding: 12px 8px;
-		height: 100%;
-	}
-	.placeholder {
-		font-size: 12px;
-		color: var(--color-placeholder);
-	}
-</style>
-```
-
-`src/lib/components/Toolbar.svelte`:
-
-```svelte
-<div class="toolbar"><!-- Formatting toolbar — Day 12 --></div>
-```
-
-`src/lib/components/StatusBar.svelte`:
-
-```svelte
-<script lang="ts">
-	import { document as doc } from '$lib/stores/document';
-	import { formatWordCount } from '$lib/utils';
-</script>
-
-<footer data-testid="status-bar" class="status-bar">
-	<span>{formatWordCount(doc.get().content)}</span>
-</footer>
-```
-
-### Step 3.7 — Wire `+page.svelte`
-
-`+page.svelte` owns application-level UI state and the single keyboard shortcut handler.
-It is the only file that wires AppShell slots together.
-
-```svelte
-<script lang="ts">
-	import AppShell from '$lib/components/AppShell.svelte';
-	import Sidebar from '$lib/components/Sidebar.svelte';
-	import Toolbar from '$lib/components/Toolbar.svelte';
-	import StatusBar from '$lib/components/StatusBar.svelte';
-
-	// App-level UI state — flows down as props, never in a store
-	let sidebarVisible = $state(true);
-	let isDistractionFree = $state(false);
-	let editorMode = $state<'rich' | 'source'>('rich');
-	let fontSize = $state(16);
-
-	function handleKeydown(e: KeyboardEvent) {
-		if (e.metaKey && !e.shiftKey) {
-			if (e.key === 'o') {
-				e.preventDefault();
-				openFile();
-			}
-			if (e.key === 's') {
-				e.preventDefault();
-				save();
-			}
-			if (e.key === 'n') {
-				e.preventDefault();
-				newFile();
-			}
-			if (e.key === '/') {
-				e.preventDefault();
-				editorMode = editorMode === 'rich' ? 'source' : 'rich';
-			}
-			if (e.key === '=') {
-				e.preventDefault();
-				setFontSize(fontSize + 1);
-			}
-			if (e.key === '-') {
-				e.preventDefault();
-				setFontSize(fontSize - 1);
-			}
-		}
-		if (e.metaKey && e.shiftKey) {
-			if (e.key === 'S') {
-				e.preventDefault();
-				saveAs();
-			}
-			if (e.key === 'F') {
-				e.preventDefault();
-				isDistractionFree = !isDistractionFree;
-			}
-			if (e.key === 'L') {
-				e.preventDefault();
-				sidebarVisible = !sidebarVisible;
-			}
-		}
-	}
-
-	function setFontSize(size: number) {
-		fontSize = Math.max(10, Math.min(32, size));
-		document.documentElement.style.setProperty('--font-size-editor', `${fontSize}px`);
-	}
-
-	// openFile, save, saveAs, newFile — implemented in Day 7
-	async function openFile() {}
-	async function save() {}
-	async function saveAs() {}
-	function newFile() {}
-</script>
-
-<svelte:window onkeydown={handleKeydown} />
-
-<AppShell {sidebarVisible} {isDistractionFree}>
-	{#snippet sidebar()}<Sidebar />{/snippet}
-	{#snippet toolbar()}<Toolbar />{/snippet}
-	{#snippet editor()}
-		<div data-testid="editor-area" class="editor-area">
-			<!-- EditorContainer goes here — Day 4 -->
-			<p class="placeholder">Editor</p>
-		</div>
-	{/snippet}
-	{#snippet statusbar()}<StatusBar />{/snippet}
-</AppShell>
-
-<style>
-	.editor-area {
-		padding: clamp(16px, 3vw, 32px);
-		max-width: var(--editor-max-width);
-		margin: 0 auto;
-		width: 100%;
-		min-height: 100%;
-	}
-	.placeholder {
-		font-size: 12px;
-		color: var(--color-placeholder);
-	}
-</style>
-```
-
-> **Reader sizing note:** Keep `max-width` + centered margins for readability, but let
-> scrolling stay on AppShell's `.zone-editor` (`overflow-y: auto`) so the scrollbar remains
-> at the far-right edge of the editor pane.
-
-Run layout tests:
+### Verification
 
 ```bash
-npx playwright test tests/layout.test.ts
-# Expected: 5 passed
+npm run test:unit && npx playwright test tests/layout.test.ts
 ```
 
-Run all tests:
-
-```bash
-npm run test:unit && npx playwright test
-```
-
-```bash
-git add .
-git commit -m "feat: app shell — document store, AppShell layout, StatusBar, shortcut handler"
-```
-
-**Day 3 done when:** All 5 layout tests pass, all unit tests pass, CI is green.
+**Day 3 done when:** All layout tests pass, document store unit tests pass, CI is green.
 
 ---
 
-## Day 4 — TipTap Editor
+## Day 4 — TipTap Editor ✓
 
 **Goal:** A working TipTap editor in the editor zone. Markdown typed or loaded renders
-in place. `EditorContainer` coordinates content; `EditorPane` is a dumb TipTap wrapper.
+in place. `EditorPane` owns the PM instance + plugins; `EditorContainer` syncs panes and
+dirty state (see [Current implementation](#current-implementation-authoritative-where-it-differs-from-older-day-steps)).
 
 ### Step 4.1 — Install TipTap
 
@@ -704,6 +241,7 @@ import { describe, it, expect } from 'vitest';
 import { Editor } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
+import { getMarkdown } from './markdown';
 
 function createEditor(content = '') {
 	return new Editor({ extensions: [StarterKit, Markdown], content });
@@ -723,13 +261,15 @@ describe('markdown round-trip', () => {
 	for (const [name, markdown] of cases) {
 		it(`round-trips ${name}`, () => {
 			const editor = createEditor(markdown);
-			const result = editor.storage.markdown.getMarkdown().trim();
+			const result = getMarkdown(editor).trim();
 			editor.destroy();
 			expect(result).toBe(markdown.trim());
 		});
 	}
 });
 ```
+
+Import `getMarkdown` from `$lib/markdown` (shared serializer for app + tests).
 
 ```bash
 npm run test:unit
@@ -788,8 +328,12 @@ npx playwright test tests/editor.test.ts
 
 ### Step 4.4 — Build EditorPane
 
-`EditorPane` is a dumb TipTap wrapper. It receives `content` as a prop, calls `onChange`
-on every change. It knows nothing about source mode, file I/O, or stores.
+`EditorPane` wraps TipTap, registers **`Headings`**, **`DirtyState`**, **`WordCount`**, link
+handling, and `onReady` → `EditorHandle`. It calls `onChange(getMarkdown(editor))` on update.
+It does not own file I/O (see `fileService.ts`).
+
+> The scaffold below is the original minimal TipTap shell; the **repository file** adds the
+> plugins above, `buildEditorProps` / `handleKeyDown`, and extended node types (**Day 5**).
 
 Create `src/lib/components/EditorPane.svelte`:
 
@@ -896,69 +440,17 @@ Create `src/lib/components/EditorPane.svelte`:
 
 ### Step 4.5 — Build EditorContainer
 
-`EditorContainer` owns `editorMode` (passed from `+page.svelte`) and synchronises content
-between the document store and the active pane. It is the only component that reads and
-writes the document store.
-
-Create `src/lib/components/EditorContainer.svelte`:
-
-```svelte
-<script lang="ts">
-	import { document as doc } from '$lib/stores/document';
-	import EditorPane from './EditorPane.svelte';
-
-	interface Props {
-		editorMode: 'rich' | 'source';
-		theme: 'light' | 'dark';
-	}
-
-	let { editorMode, theme }: Props = $props();
-
-	// Content is derived from the document store — EditorContainer is the bridge
-	let content = $state(doc.get().content);
-
-	function handleChange(md: string) {
-		content = md;
-		doc.update(md);
-	}
-
-	// Sync inbound store changes (e.g. file open) into local content
-	$effect(() => {
-		const storeContent = doc.get().content;
-		if (storeContent !== content) content = storeContent;
-	});
-</script>
-
-{#if editorMode === 'rich'}
-	<EditorPane {content} onChange={handleChange} {theme} />
-{/if}
-<!-- SourcePane added Day 6 -->
-```
+`EditorContainer` receives `editorMode` and keeps **both** `EditorPane` and `SourcePane` mounted,
+toggling visibility with CSS (`display: none`) so undo stacks survive mode switches (see
+**Undo stack** in [Current implementation](#current-implementation-authoritative-where-it-differs-from-older-day-steps)).
+It syncs markdown between handles on mode change; **no** `document` store `content` field.
+Rich-mode dirty tracking is the `DirtyState` PM plugin; source mode calls `doc.markDirty(true)`
+on change. See live `EditorContainer.svelte`.
 
 ### Step 4.6 — Wire EditorContainer into `+page.svelte`
 
-Replace the editor placeholder in `+page.svelte`:
-
-```svelte
-<script lang="ts">
-	// ... existing imports and state ...
-	import EditorContainer from '$lib/components/EditorContainer.svelte';
-
-	// Derive theme from data-theme on <html> for passing to editor components
-	let theme = $derived(
-		typeof window !== 'undefined' && window.document.documentElement.dataset.theme === 'dark'
-			? 'dark'
-			: 'light'
-	);
-</script>
-
-<!-- In the editor snippet: -->
-{#snippet editor()}
-	<div data-testid="editor-area" class="editor-area">
-		<EditorContainer {editorMode} {theme} />
-	</div>
-{/snippet}
-```
+Mount `EditorContainer` inside the editor snippet; derive `theme` from `<html data-theme>`.
+File open/save flows push/pull markdown via `EditorHandle` in `fileService.ts`, not via the store.
 
 Also install the shell plugin for link interception (needed by EditorPane):
 
@@ -1001,9 +493,12 @@ word count updates on typing, link clicks do not navigate the app window.
 
 ---
 
-## Day 5 — Extended Node Types
+## Day 5 — Extended Node Types ✓
 
 **Goal:** Code blocks (with syntax highlighting), tables, task lists, and strikethrough.
+
+**Live note:** `StarterKit.configure({ codeBlock: false, strike: false })` so lowlight + `Strike`
+extensions own those nodes; round-trip tests use `getMarkdown()` from `$lib/markdown`.
 
 ### Step 5.1 — Install extensions
 
@@ -1029,13 +524,14 @@ import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import { common, createLowlight } from 'lowlight';
+import { getMarkdown } from './markdown';
 
 const lowlight = createLowlight(common);
 
 function createExtendedEditor(content = '') {
 	return new Editor({
 		extensions: [
-			StarterKit.configure({ codeBlock: false }),
+			StarterKit.configure({ codeBlock: false, strike: false }),
 			Markdown,
 			TaskList,
 			TaskItem,
@@ -1054,7 +550,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips strikethrough', () => {
 		const md = 'This is ~~struck~~ text.';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});
@@ -1062,7 +558,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips a fenced code block', () => {
 		const md = '```javascript\nconsole.log("hello");\n```';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});
@@ -1070,7 +566,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips an unchecked task list item', () => {
 		const md = '- [ ] Unchecked task';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});
@@ -1078,7 +574,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips a checked task list item', () => {
 		const md = '- [x] Checked task';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});
@@ -1086,7 +582,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips a basic markdown table', () => {
 		const md = '| Name | Role |\n| --- | --- |\n| Alice | Engineer |';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});
@@ -1094,7 +590,7 @@ describe('extended markdown round-trip', () => {
 	it('round-trips a markdown table with inline formatting', () => {
 		const md = '| Name | Notes |\n| --- | --- |\n| Alice | **Strong** and *italic* |';
 		const editor = createExtendedEditor(md);
-		const result = editor.storage.markdown.getMarkdown().trim();
+		const result = getMarkdown(editor).trim();
 		editor.destroy();
 		expect(result).toBe(md);
 	});
@@ -1234,11 +730,11 @@ git commit -m "feat: add code blocks, task lists, strikethrough, and tables"
 
 ---
 
-## Day 6 — Source Mode Toggle
+## Day 6 — Source Mode Toggle ✓
 
-**Goal:** `Cmd+/` toggles between seamless TipTap view and a raw CodeMirror view. `editorMode`
-is owned by `+page.svelte` and passed as a prop — the single shortcut handler already handles
-the toggle. `EditorContainer` just renders the right pane based on the prop.
+**Goal:** `Cmd+/` toggles between TipTap and CodeMirror. `editorMode` lives in `+page.svelte`.
+**Live:** both panes stay mounted (CSS hide/show) so undo survives toggles; see **Undo stack**
+in [Current implementation](#current-implementation-authoritative-where-it-differs-from-older-day-steps).
 
 ### Step 6.1 — Install CodeMirror 6
 
@@ -1287,9 +783,10 @@ test('toggling back to rich mode preserves content', async ({ page }) => {
 	await expect(editorArea.locator('h1')).toContainText('Preserved Heading');
 });
 
-test('undo history is cleared after round-trip through source mode', async ({ page }) => {
-	// This is a known limitation — document it here so it is not mistaken for a bug.
-	// editor.commands.setContent() resets the ProseMirror history.
+test('undo history is preserved after round-trip through source mode without edits', async ({
+	page
+}) => {
+	// Both panes stay mounted (CSS hidden), so TipTap's undo stack survives a no-op toggle.
 	await page.goto('/');
 	const editor = page.locator('.tiptap');
 	await editor.click();
@@ -1300,9 +797,8 @@ test('undo history is cleared after round-trip through source mode', async ({ pa
 	await page.keyboard.press('Meta+/');
 	await page.keyboard.press('Meta+/');
 
-	// Undo should NOT revert to empty — undo stack was cleared by the toggle
 	await page.keyboard.press('Meta+z');
-	await expect(editor).toContainText('Original text');
+	await expect(editor).not.toContainText('Original text');
 });
 
 test('editing in source mode updates rich mode rendering after toggle back', async ({ page }) => {
@@ -1323,6 +819,7 @@ test('editing in source mode updates rich mode rendering after toggle back', asy
 	await expect(sourceContent).toContainText('Updated Heading');
 
 	await page.keyboard.press('Meta+/');
+	await expect(editorArea.locator('[data-testid="source-editor"]')).not.toBeVisible();
 	await expect(editorArea.locator('h1')).toContainText('Updated Heading');
 });
 ```
@@ -1334,105 +831,15 @@ npx playwright test tests/source-mode.test.ts
 
 ### Step 6.3 — Build SourcePane
 
-`SourcePane` is a dumb CodeMirror wrapper. Same prop shape as `EditorPane`.
+Live `SourcePane.svelte`: CodeMirror 6, `EditorState` + `Annotation` so programmatic
+`setContent` does not echo through `onChange`; exposes `EditorHandle` via `onReady` and
+`setSourceHandle` (see `editor.ts`).
 
-Create `src/lib/components/SourcePane.svelte`:
+### Step 6.4 — EditorContainer
 
-```svelte
-<script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
-	import { EditorView, basicSetup } from 'codemirror';
-	import { markdown } from '@codemirror/lang-markdown';
-	import { oneDark } from '@codemirror/theme-one-dark';
-	import { EditorState } from '@codemirror/state';
-
-	interface Props {
-		content: string;
-		onChange: (value: string) => void;
-		theme: 'light' | 'dark';
-	}
-
-	let { content, onChange, theme }: Props = $props();
-
-	let containerEl: HTMLElement;
-	let view: EditorView;
-
-	onMount(() => {
-		view = new EditorView({
-			state: EditorState.create({
-				doc: content,
-				extensions: [
-					basicSetup,
-					markdown(),
-					...(theme === 'dark' ? [oneDark] : []),
-					EditorView.updateListener.of((update) => {
-						if (update.docChanged) onChange(update.state.doc.toString());
-					})
-				]
-			}),
-			parent: containerEl
-		});
-	});
-
-	$effect(() => {
-		if (!view) return;
-		const current = view.state.doc.toString();
-		if (current === content) return;
-		view.dispatch({
-			changes: { from: 0, to: view.state.doc.length, insert: content }
-		});
-	});
-
-	onDestroy(() => view?.destroy());
-</script>
-
-<div bind:this={containerEl} data-testid="source-editor" class="source-editor"></div>
-
-<style>
-	.source-editor {
-		height: 100%;
-		overflow-y: auto;
-	}
-	:global(.source-editor .cm-editor) {
-		height: 100%;
-		font-size: 14px;
-	}
-</style>
-```
-
-### Step 6.4 — Update EditorContainer to render SourcePane
-
-```svelte
-<script lang="ts">
-	import EditorPane from './EditorPane.svelte';
-	import SourcePane from './SourcePane.svelte';
-	import { document as doc } from '$lib/stores/document';
-
-	interface Props {
-		editorMode: 'rich' | 'source';
-		theme: 'light' | 'dark';
-	}
-
-	let { editorMode, theme }: Props = $props();
-	let content = $state(doc.get().content);
-
-	function handleChange(md: string) {
-		content = md;
-		doc.update(md);
-	}
-
-	$effect(() => {
-		const storeContent = doc.get().content;
-		if (storeContent !== content) content = storeContent;
-	});
-</script>
-
-{#if editorMode === 'rich'}
-	<EditorPane {content} onChange={handleChange} {theme} />
-{:else}
-	<SourcePane {content} onChange={handleChange} {theme} />
-{/if}
-```
+Live `EditorContainer.svelte`: two `.pane-wrap` divs (rich + source), `.hidden` when inactive;
+`setActiveMode`; syncs markdown between `richHandle` and `sourceHandle` on mode switch;
+`handleChange` marks dirty in source mode only.
 
 The toggle itself is already in `+page.svelte`'s `handleKeydown` from Day 3:
 
@@ -1459,16 +866,16 @@ git add .
 git commit -m "feat: source mode toggle with Cmd+/"
 ```
 
-**Day 6 done when:** Toggle works, content is preserved, source edits are reflected back in
-rich mode after toggling, and undo-stack limitation is tested and documented.
+**Day 6 done when:** Toggle works, content is preserved, source edits round-trip to rich mode,
+and undo behaviour matches the dual-mount architecture (see source-mode e2e tests).
 
 ---
 
-## Day 7 — Open File + New File
+## Day 7 — Open File + New File ✓
 
-**Goal:** `Cmd+O` opens a native file picker. Selecting a `.md` file loads it via
-`document.load()`. `Cmd+N` calls `document.reset()`. Both shortcuts are already in the
-`handleKeydown` stub from Day 3 — today they get their implementations.
+**Goal:** `Cmd+O` / picker opens a `.md` file; `Cmd+N` starts a new doc. **Live:** all
+invokes and dialog flow live in `src/lib/fileService.ts`. After read, push markdown into
+both editor handles with `markClean: true` on rich, then `document.load(path)` (metadata only).
 
 ### Step 7.0 — Configure Tauri capabilities
 
@@ -1485,6 +892,7 @@ Create `src-tauri/capabilities/default.json`:
 	"windows": ["main"],
 	"permissions": [
 		"core:default",
+		"core:menu:default",
 		"core:window:allow-close",
 		"core:window:allow-destroy",
 		"core:path:default",
@@ -1496,9 +904,8 @@ Create `src-tauri/capabilities/default.json`:
 }
 ```
 
-> **Note:** The live project uses `core:path:default` and the window ACLs above. File read/write
-> are implemented via custom commands and `std::fs` in Rust, not the `fs` plugin — adjust if you
-> add the `fs` plugin later.
+> **Note:** File read/write use custom commands + `std::fs`, not the `fs` plugin. **`core:menu:default`**
+> is required for the Day 12 native menu (`installTauriAppMenu`).
 
 Add plugins to `src-tauri/Cargo.toml`:
 
@@ -1607,6 +1014,9 @@ pub fn run() {
 }
 ```
 
+> **Live:** `AppState` also includes `recent_files` (Day 9); `open_file` updates recents on disk;
+> `run()` uses `.setup()` to load persisted recents. See current `src-tauri/src/lib.rs`.
+
 ### Step 7.3 — Write failing e2e test for file open
 
 Create a fixture `tests/fixtures/sample.md`:
@@ -1646,29 +1056,14 @@ test('loading a markdown file displays its content', async ({ page }) => {
 > automated suite, test file loading at the Rust level with `cargo test`. The e2e test
 > serves as a manual integration checklist item.
 
-### Step 7.4 — Implement `openFile` and `newFile` in `+page.svelte`
+### Step 7.4 — `openFile` and `newFile`
 
-Fill in the stubs from Day 3:
+Implement in **`src/lib/fileService.ts`** and import into `+page.svelte`:
 
-```typescript
-import { invoke } from '@tauri-apps/api/core';
-import { open } from '@tauri-apps/plugin-dialog';
-import { document as doc } from '$lib/stores/document';
-
-async function openFile() {
-	const selected = await open({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
-	if (!selected || Array.isArray(selected)) return;
-	const content = await invoke<string>('open_file', { path: selected });
-	doc.load(content, selected as string);
-}
-
-function newFile() {
-	doc.reset();
-}
-```
-
-The `document.load()` call updates the store → `EditorContainer` reacts via `$effect` →
-`EditorPane` receives new content prop → editor re-renders. No ref calls, no method calls.
+- **`openFile(path?)`** — optional path (recent-file click); else dialog; if dirty, confirm;
+  `invoke('open_file')`; `getRichHandle()?.setContent(content, { markClean: true })`;
+  `getSourceHandle()?.setContent(content)`; `doc.load(selected)`; `recentFiles.prepend(selected)`.
+- **`newFile()`** — `setContent('')` on both handles with `markClean` on rich; `doc.reset()`.
 
 ```bash
 git add .
@@ -1680,10 +1075,14 @@ git commit -m "feat: open .md file with Cmd+O, new file with Cmd+N"
 
 ---
 
-## Day 8 — Save, Auto-save, Quit Dialog
+## Day 8 — Save, Auto-save, Quit Dialog ✓
 
-**Goal:** `Cmd+S` saves in place. `Cmd+Shift+S` opens a save dialog. Title reflects dirty
-state. Auto-save fires every 30 seconds. Quitting with unsaved changes shows a native dialog.
+**Goal:** `Cmd+S` saves in place. `Cmd+Shift+S` opens a save dialog. Title / status reflect dirty
+state. Auto-save every 30s when dirty + path set. Quit with unsaved changes → native confirm.
+
+**Live:** `save` / `saveAs` in `fileService.ts` using `getActiveContent()`; `doc.markSaveError` on
+failure; `+page.svelte` `onMount` interval calls `save()`; `onCloseRequested` + `destroy()` when
+confirmed (see Step 8.4).
 
 ### Step 8.1 — Rust tests for file write
 
@@ -1743,45 +1142,14 @@ fn set_current_file(state: tauri::State<'_, AppState>, path: String) {
 
 Register new commands in `generate_handler!`.
 
-### Step 8.3 — Implement `save` and `saveAs` in `+page.svelte`
+### Step 8.3 — `save`, `saveAs`, auto-save
 
-```typescript
-import { save as saveDialog } from '@tauri-apps/plugin-dialog';
+**`fileService.ts`:** `save()` — if no `filePath`, delegate to `saveAs()`; else
+`invoke('save_file', { content: getActiveContent() })`, `doc.markSaved()` or `markSaveError`.
+`saveAs()` — dialog, `set_current_file`, write, `doc.setFilePath` + `markSaved()`.
 
-async function save() {
-	const { content, filePath } = doc.get();
-	if (!filePath) {
-		await saveAs();
-		return;
-	}
-	await invoke('save_file', { content });
-	doc.markSaved();
-}
-
-async function saveAs() {
-	const { content } = doc.get();
-	const path = await saveDialog({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
-	if (!path) return;
-	await invoke('set_current_file', { path });
-	await invoke('save_file', { content });
-	doc.load(content, path);
-	doc.markSaved();
-}
-```
-
-Auto-save — start the interval once on mount:
-
-```typescript
-import { onMount } from 'svelte';
-
-onMount(() => {
-	const id = setInterval(() => {
-		const { isDirty, filePath } = doc.get();
-		if (isDirty && filePath) save();
-	}, 30_000);
-	return () => clearInterval(id);
-});
-```
+**`+page.svelte` `onMount`:** `setInterval` 30s → if `isDirty && filePath` call `save()` from
+`fileService`.
 
 ### Step 8.4 — Quit with unsaved changes
 
@@ -1839,9 +1207,13 @@ is set, quit dialog fires when dirty.
 
 ---
 
-## Day 9 — Recent Files
+## Day 9 — Recent Files ✓
 
-**Goal:** Last 10 opened files stored on disk, shown in the sidebar, surviving app restart.
+**Goal:** Last 10 opened files on disk, listed in the sidebar, survive restart.
+
+**Live:** Rust persists in app data dir; frontend **`recentFiles` store** (`src/lib/stores/recentFiles.ts`)
+hydrated by `loadRecentFiles()`; `openFile` / `recentFiles.prepend` keep the UI in sync without
+per-snippet `invoke` in `RecentFiles.svelte`.
 
 ### Step 9.1 — Rust tests for recent files
 
@@ -1975,34 +1347,27 @@ Load recent files on startup in `run()`:
 
 ### Step 9.3 — Sidebar recent files component
 
-Create `src/lib/components/RecentFiles.svelte` and compose it into `Sidebar.svelte`.
-`Sidebar` reads the document store for the active path and calls `invoke` to get the list.
-Clicking a recent file calls `openFile` — pass it down as a prop:
+`RecentFiles.svelte` subscribes to **`recentFiles`** (`src/lib/stores/recentFiles.ts`). Populate
+the store from `loadRecentFiles()` → `get_recent_files` on app mount (`+page.svelte`); update
+with `recentFiles.prepend(path)` when opening files (`fileService.openFile`).
 
 ```svelte
-<!-- RecentFiles.svelte -->
 <script lang="ts">
-	import { invoke } from '@tauri-apps/api/core';
-	import { onMount } from 'svelte';
+	import { recentFiles } from '$lib/stores/recentFiles';
 
 	interface Props {
-		onOpen: (path: string) => void;
+		onOpenFile: (path: string) => void;
 	}
-	let { onOpen }: Props = $props();
-
-	let paths: string[] = $state([]);
-	onMount(async () => {
-		paths = await invoke<string[]>('get_recent_files');
-	});
+	let { onOpenFile }: Props = $props();
 
 	const displayName = (p: string) => p.split('/').pop() ?? p;
 </script>
 
-{#if paths.length > 0}
+{#if $recentFiles.length > 0}
 	<section class="recent">
 		<p class="label">Recent</p>
-		{#each paths as path}
-			<button class="item" onclick={() => onOpen(path)} title={path}>
+		{#each $recentFiles as path (path)}
+			<button class="item" onclick={() => onOpenFile(path)} title={path}>
 				{displayName(path)}
 			</button>
 		{/each}
@@ -2020,13 +1385,18 @@ recent files appear in sidebar after opening a file.
 
 ---
 
-## Day 10 — Outline Sidebar: Heading Extraction
+## Day 10 — Outline Sidebar: Heading Extraction ✓
 
-**Goal:** Sidebar auto-populates with a hierarchical heading list from the live document.
+**Goal:** Sidebar shows a live hierarchical heading list.
+
+**Live:** `Headings` PM plugin (`src/lib/Headings.ts`) traverses the TipTap doc, pushes to
+`headings` store, and applies heading `id` decorations (duplicate titles → `-0`, `-1`, … via
+`slugify` from `outline.ts`). **`extractHeadings` in `outline.ts`** remains for fast unit tests
+on markdown strings (not the sidebar data path).
 
 ### Step 10.1 — Write failing unit tests for heading extraction
 
-`extractHeadings` is a pure function — no DOM, no editor instance needed.
+`extractHeadings` — pure markdown-line parser tests (`outline.test.ts`).
 
 Create `src/lib/outline.test.ts`:
 
@@ -2140,50 +1510,11 @@ npx playwright test tests/outline.test.ts
 
 ### Step 10.4 — Wire outline into Sidebar
 
-Update `Sidebar.svelte` to read the document store and derive headings:
+`Sidebar.svelte`: `RecentFiles` + `$headings` from `src/lib/stores/headings.ts` (filled by
+`Headings` in `EditorPane`). Outline buttons call `document.getElementById(h.slug)?.scrollIntoView({ behavior: 'smooth' })`.
 
-```svelte
-<script lang="ts">
-	import { document as doc } from '$lib/stores/document';
-	import { extractHeadings } from '$lib/outline';
-	import RecentFiles from './RecentFiles.svelte';
-
-	interface Props {
-		onOpenFile: (path: string) => void;
-	}
-	let { onOpenFile }: Props = $props();
-
-	// Debounce heading extraction — don't re-derive on every keystroke
-	let headings = $derived.by(() => {
-		const content = doc.get().content;
-		return extractHeadings(content);
-	});
-</script>
-
-<div data-testid="sidebar" class="sidebar">
-	<RecentFiles onOpen={onOpenFile} />
-
-	{#if headings.length > 0}
-		<section class="outline">
-			<p class="label">Outline</p>
-			{#each headings as h}
-				<button
-					class="heading-item level-{h.level}"
-					onclick={() => document.getElementById(h.slug)?.scrollIntoView({ behavior: 'smooth' })}
-				>
-					{h.text}
-				</button>
-			{/each}
-		</section>
-	{/if}
-</div>
-```
-
-Pass `onOpenFile` from `+page.svelte` (which owns `openFile`):
-
-```svelte
-{#snippet sidebar()}<Sidebar onOpenFile={openFile} />{/snippet}
-```
+`+page.svelte`: `{#snippet sidebar()}<Sidebar onOpenFile={openFile} />{/snippet}` (`openFile` from
+`fileService`).
 
 ```bash
 npx playwright test tests/outline.test.ts
@@ -2200,74 +1531,28 @@ the user types.
 
 ---
 
-## Day 11 — Outline Navigation + Active Section Highlight
+## Day 11 — Outline Navigation + Active Section Highlight ✓
 
-**Goal:** Clicking a heading in the sidebar scrolls to that section. The active heading
-is highlighted as the user scrolls.
+**Goal:** Sidebar click scrolls to the correct heading; active heading highlights while scrolling.
 
-### Step 11.1 — Add heading IDs to TipTap output
+### Step 11.1 — Heading IDs
 
-TipTap headings need `id` attributes matching the slugs for `scrollIntoView` to work.
-Add a TipTap extension or a post-render pass that sets heading IDs.
+Implemented by the **`Headings` PM plugin** (node decorations with `id` = slug, including
+deduplication). E2E: heading `id` matches slugified text; duplicate-title scroll test uses
+`loadContent()` helper (see [Playwright test helper pattern](#playwright-test-helper-pattern)).
 
-### Step 11.2 — Write failing e2e tests
+### Step 11.2 — E2e tests
 
-Add to `tests/outline.test.ts`:
+Live `tests/outline.test.ts` includes: ids on headings, id updates when title changes,
+duplicate-heading sidebar click (scrolls to **h2**, not first text match), active class on
+scroll. Scroll the **`.zone-editor`** root (not only the inner editor area) so behaviour
+matches `Sidebar.svelte`.
 
-```typescript
-test('clicking a sidebar heading scrolls the editor', async ({ page }) => {
-	await page.goto('/');
-	const editor = page.locator('.tiptap');
-	await editor.click();
-	// Type enough content to create a scrollable document
-	await page.keyboard.type('# First\n\n' + 'paragraph\n\n'.repeat(20) + '## Deep Section');
+### Step 11.3 — Active section tracking
 
-	await page.locator('[data-testid="sidebar"]').getByText('Deep Section').click();
-	// The heading should now be in view
-	const heading = editor.locator('h2');
-	await expect(heading).toBeInViewport();
-});
-
-test('active heading is highlighted in sidebar on scroll', async ({ page }) => {
-	await page.goto('/');
-	const editor = page.locator('.tiptap');
-	await editor.click();
-	await page.keyboard.type('# First\n\n' + 'paragraph\n\n'.repeat(20) + '## Second');
-
-	// Scroll to bottom
-	await page
-		.locator('[data-testid="editor-area"]')
-		.evaluate((el) => (el.scrollTop = el.scrollHeight));
-
-	const secondItem = page.locator('[data-testid="sidebar"]').getByText('Second');
-	await expect(secondItem).toHaveClass(/active/);
-});
-```
-
-### Step 11.3 — Implement active section tracking
-
-Use an `IntersectionObserver` in `Sidebar.svelte` to track which heading is visible:
-
-```typescript
-let activeSlug = $state('');
-
-$effect(() => {
-	const observer = new IntersectionObserver(
-		(entries) => {
-			for (const entry of entries) {
-				if (entry.isIntersecting) activeSlug = entry.target.id;
-			}
-		},
-		{ threshold: 0.5 }
-	);
-
-	document.querySelectorAll('.tiptap h1, .tiptap h2, .tiptap h3').forEach((el) => {
-		observer.observe(el);
-	});
-
-	return () => observer.disconnect();
-});
-```
+`Sidebar.svelte`: `IntersectionObserver` with **`root: .zone-editor`**, multiple thresholds,
+ratio map + “first heading with ≥0.5 visible height in root” (see live file). Outline buttons
+use `class:active={h.slug === activeSlug}`.
 
 ```bash
 npx playwright test tests/outline.test.ts
@@ -2284,52 +1569,27 @@ highlighted during scroll.
 
 ---
 
-## Day 12 — macOS Menu Bar + Editor Shortcuts
+## Day 12 — macOS Menu Bar + Editor Shortcuts ✓
 
-**Goal:** Native macOS menu bar with File/Edit/View menus. Editor formatting shortcuts
-(Cmd+B, Cmd+I, Cmd+K, Cmd+`) work.
+**Goal:** Native menu (File / Edit / View) + editor formatting keys.
 
-### Step 12.1 — Editor-internal formatting shortcuts
+### Step 12.1 — Editor formatting shortcuts
 
-These shortcuts are editor concerns, not app concerns — they live in `EditorPane.svelte`
-via a `svelte:window` handler scoped to when the editor is focused:
+- **Cmd+B / Cmd+I** — ProseMirror / StarterKit default keymap when the rich editor is focused
+  (covered by `tests/editor.test.ts`).
+- **Cmd+`** — `editorProps.handleKeyDown` in `EditorPane.svelte` → `toggleCode()` (handles `` ` `` and `Backquote`).
+- **Cmd+K** — `preventDefault` only until link UI lands (**Day 15**).
 
-```typescript
-function handleEditorKeydown(e: KeyboardEvent) {
-	if (!editor?.isFocused) return;
-	if (e.metaKey) {
-		if (e.key === 'b') {
-			e.preventDefault();
-			editor.chain().focus().toggleBold().run();
-		}
-		if (e.key === 'i') {
-			e.preventDefault();
-			editor.chain().focus().toggleItalic().run();
-		}
-		if (e.key === 'k') {
-			e.preventDefault(); /* open link dialog — Day 15 */
-		}
-		if (e.key === '`') {
-			e.preventDefault();
-			editor.chain().focus().toggleCode().run();
-		}
-	}
-}
-```
+### Step 12.2 — Native app menu
 
-### Step 12.2 — macOS native menu
+**`src/lib/tauriAppMenu.ts`** — `@tauri-apps/api/menu` (`Menu`, `Submenu`, `MenuItem`,
+`PredefinedMenuItem`). **`installTauriAppMenu(handlers)`** maps item ids via
+`src/lib/appMenuDispatch.ts` → same `openFile` / `save` / `newFile` / view toggles as keyboard
+shortcuts. Called from `+page.svelte` `onMount` when `isTauriRuntime()` (try/catch for dev /
+Playwright). Requires **`core:menu:default`** in `capabilities/default.json`.
 
-Configure the menu in `tauri.conf.json` or via Tauri's menu builder API. Wire menu items
-to emit events that `+page.svelte` listens for:
-
-```rust
-// File > Open
-.menu(tauri::menu::Menu::new(app)?)
-```
-
-Listen for menu events in `+page.svelte` via `listen('tauri://menu', ...)` and dispatch
-to the existing handler functions (`openFile`, `save`, etc.) — no new logic, just wiring
-existing functions to a new trigger.
+**Toolbar:** `Toolbar.svelte` remains an optional placeholder; formatting is keyboard-driven
+unless you add buttons later.
 
 ```bash
 git add .
