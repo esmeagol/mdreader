@@ -29,9 +29,11 @@ test('toggling back to rich mode preserves content', async ({ page }) => {
 	await expect(editorArea.locator('h1')).toContainText('Preserved Heading');
 });
 
-test('undo history is cleared after round-trip through source mode', async ({ page }) => {
-	// This is a known limitation — document it here so it is not mistaken for a bug.
-	// editor.commands.setContent() resets the ProseMirror history.
+test('undo history is preserved after round-trip through source mode without edits', async ({
+	page
+}) => {
+	// Both panes stay mounted (CSS hidden), so TipTap's undo stack survives
+	// a mode toggle that doesn't change content.
 	await page.goto('/');
 	const editor = page.locator('.tiptap');
 	await editor.click();
@@ -42,9 +44,9 @@ test('undo history is cleared after round-trip through source mode', async ({ pa
 	await page.keyboard.press('Meta+/');
 	await page.keyboard.press('Meta+/');
 
-	// Undo should NOT revert to empty — undo stack was cleared by the toggle
+	// Undo should work — the typing is still in the undo stack
 	await page.keyboard.press('Meta+z');
-	await expect(editor).toContainText('Original text');
+	await expect(editor).not.toContainText('Original text');
 });
 
 test('editing in source mode updates rich mode rendering after toggle back', async ({ page }) => {

@@ -11,38 +11,59 @@
 
 	let { editorMode, theme }: Props = $props();
 
-	let handle: EditorHandle | null = $state(null);
+	let richHandle: EditorHandle | null = $state(null);
+	let sourceHandle: EditorHandle | null = $state(null);
 
 	function handleChange(md: string) {
 		doc.update(md);
 	}
 
-	function handleReady(h: EditorHandle) {
-		handle = h;
-	}
-
-	// Push externally-loaded content into the editor when the store changes.
+	// Push external content changes (file loads) and mode-switch syncs to
+	// the active pane only. The inactive pane retains its undo stack and is
+	// synced once when it becomes active again.
 	$effect(() => {
 		const storeContent = $doc.content;
-		if (handle && handle.getContent() !== storeContent) {
-			handle.setContent(storeContent);
+		if (editorMode === 'rich' && richHandle && richHandle.getContent() !== storeContent) {
+			richHandle.setContent(storeContent);
+		}
+		if (editorMode === 'source' && sourceHandle && sourceHandle.getContent() !== storeContent) {
+			sourceHandle.setContent(storeContent);
 		}
 	});
 
-	// After a save, reset the DirtyState clean baseline so that undoing back
-	// to the saved content correctly shows the document as clean.
+	// After a save, reset the DirtyState clean baseline in the rich editor.
 	let lastSaved: Date | null = null;
 	$effect(() => {
 		const saved = $doc.lastSaved;
-		if (saved && saved !== lastSaved && handle) {
+		if (saved && saved !== lastSaved && richHandle) {
 			lastSaved = saved;
-			handle.markSaved();
+			richHandle.markSaved();
 		}
 	});
 </script>
 
-{#if editorMode === 'rich'}
-	<EditorPane content={doc.get().content} onChange={handleChange} onReady={handleReady} {theme} />
-{:else}
-	<SourcePane content={$doc.content} onChange={handleChange} {theme} />
-{/if}
+<div class:hidden={editorMode !== 'rich'} class="pane-wrap">
+	<EditorPane
+		content={doc.get().content}
+		onChange={handleChange}
+		onReady={(h) => (richHandle = h)}
+		{theme}
+	/>
+</div>
+<div class:hidden={editorMode !== 'source'} class="pane-wrap">
+	<SourcePane
+		content={doc.get().content}
+		onChange={handleChange}
+		onReady={(h) => (sourceHandle = h)}
+		{theme}
+	/>
+</div>
+
+<style>
+	.pane-wrap {
+		height: 100%;
+	}
+	.pane-wrap.hidden {
+		display: none;
+	}
+</style>

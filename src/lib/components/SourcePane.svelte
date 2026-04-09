@@ -3,19 +3,24 @@
 	import { EditorView, basicSetup } from 'codemirror';
 	import { markdown } from '@codemirror/lang-markdown';
 	import { oneDark } from '@codemirror/theme-one-dark';
-	import { EditorState } from '@codemirror/state';
+	import { EditorState, Annotation } from '@codemirror/state';
+	import { type EditorHandle } from '$lib/editor';
+
+	// Marks transactions dispatched by setContent so the updateListener
+	// doesn't echo them back through onChange.
+	const externalChange = Annotation.define<boolean>();
 
 	interface Props {
 		content: string;
 		onChange: (value: string) => void;
+		onReady?: (handle: EditorHandle) => void;
 		theme: 'light' | 'dark';
 	}
 
-	let { content, onChange, theme }: Props = $props();
+	let { content, onChange, onReady, theme }: Props = $props();
 
 	let containerEl: HTMLElement;
 	let view: EditorView;
-	let applyingExternalDoc = false;
 
 	onMount(() => {
 		view = new EditorView({
@@ -26,7 +31,7 @@
 					markdown(),
 					...(theme === 'dark' ? [oneDark] : []),
 					EditorView.updateListener.of((update) => {
-						if (update.docChanged && !applyingExternalDoc) {
+						if (update.docChanged && !update.transactions.some((tr) => tr.annotation(externalChange))) {
 							onChange(update.state.doc.toString());
 						}
 					})
@@ -34,22 +39,23 @@
 			}),
 			parent: containerEl
 		});
-	});
 
-	$effect(() => {
-		if (!view) return;
-		const current = view.state.doc.toString();
-		if (current === content) return;
-
-		applyingExternalDoc = true;
-		view.dispatch({
-			changes: {
-				from: 0,
-				to: view.state.doc.length,
-				insert: content
+		onReady?.({
+			setContent(text: string) {
+				const current = view.state.doc.toString();
+				if (current === text) return;
+				view.dispatch({
+					changes: { from: 0, to: view.state.doc.length, insert: text },
+					annotations: [externalChange.of(true)]
+				});
+			},
+			getContent(): string {
+				return view.state.doc.toString();
+			},
+			markSaved() {
+				// SourcePane has no clean-baseline concept; no-op.
 			}
 		});
-		applyingExternalDoc = false;
 	});
 
 	onDestroy(() => view?.destroy());
