@@ -19,6 +19,26 @@ communicate, check the architecture first.
 The day-by-day sections below are the original TDD walkthrough. When a snippet conflicts
 with the repository, treat this section and [ARCHITECTURE.md](ARCHITECTURE.md) as correct.
 
+### Architecture summary
+
+ProseMirror is the source of truth for document content. The `document` store holds only
+file metadata (`filePath`, `isDirty`, `lastSaved`, `saveError`) — no `content` field. All
+file I/O lives in `src/lib/fileService.ts`; `+page.svelte` calls named functions from it.
+
+Key files that supersede their day-step equivalents:
+
+| File | Supersedes |
+| --- | --- |
+| `src/lib/stores/document.ts` | Day 3 store (no `content`, no `update()`) |
+| `src/lib/editor.ts` | Day 4 EditorHandle (module singletons, `getActiveContent`) |
+| `src/lib/fileService.ts` | Day 5–8 inline `invoke` in `+page.svelte` |
+| `src/lib/DirtyState.ts` | Day 6 `emitUpdate: false` / suppress-flag approach |
+| `src/lib/WordCount.ts` | Day 6 word count via store content |
+| `src/lib/Headings.ts` | Day 10 separate `HeadingId.ts` + heading extraction |
+| `src/lib/components/EditorContainer.svelte` | Day 4–8 EditorContainer (no local content state) |
+| `src/lib/components/EditorPane.svelte` | Day 4 EditorPane (PM plugins, `onReady` callback) |
+| `src/lib/components/SourcePane.svelte` | Day 8 SourcePane (CM Annotation, `onReady` callback) |
+
 ### Tauri capabilities
 
 `src-tauri/capabilities/default.json` grants `core:default`, `core:path:default`, dialog
@@ -36,19 +56,82 @@ Instead, in `+page.svelte`, register **`getCurrentWindow().onCloseRequested(...)
 - If **dirty**, call **`event.preventDefault()`**, show **`ask`**, then **`getCurrentWindow().destroy()`**
   if the user confirms quitting without saving.
 
-### Dirty flag after `document.load` / prop sync
+### Document store (supersedes Day 3 Step 3.1)
 
-Programmatic editor updates must not call `document.update()`:
+`DocumentState` has no `content` field and no `update()` operation. The current shape:
 
-- **TipTap:** `setContent(content, { emitUpdate: false })` when replacing from props.
-- **CodeMirror:** Suppress the change listener while applying a full external replace in `$effect`.
-- **EditorContainer:** Skip `document.update` when `onChange` reports markdown identical to the store.
+```typescript
+interface DocumentState {
+	filePath: string | null;
+	isDirty: boolean;
+	lastSaved: Date | null;
+	saveError: string | null;
+}
+```
 
-### Playwright: multi-section rendering
+Named operations: `load(filePath)`, `markDirty(bool)`, `markSaved()`, `setFilePath(path)`,
+`markSaveError(msg)`, `reset()`. See ARCHITECTURE.md for the full table.
 
-- **`tests/fixtures/multi-section.md`** — headings, lists, link, blockquote, fenced code.
-- **`tests/sections-render.test.ts`** — reads the fixture, loads it via the `document` store
-  in the browser (no Tauri), asserts heading tags in order and body formatting under `.tiptap`.
+### File I/O (supersedes Day 5+ inline invoke in +page.svelte)
+
+All Tauri calls live in `src/lib/fileService.ts`. The pattern on file open:
+
+```typescript
+getRichHandle()?.setContent(content, { markClean: true });
+getSourceHandle()?.setContent(content);
+doc.load(selected);
+```
+
+Push content to editors **before** updating the store. `markClean: true` resets the DirtyState
+PM plugin’s clean baseline. Never pass `markClean` on mode-switch syncs.
+
+### Dirty state (supersedes Day 6 emitUpdate/suppress approach)
+
+Dirty state in rich mode is owned by the `DirtyState` PM plugin (`src/lib/DirtyState.ts`).
+It tracks `doc.eq(cleanDoc)` — structural node equality, not string comparison.
+
+- `MARK_CLEAN_KEY` meta on a transaction resets the clean baseline (dispatched on load/save only).
+- Dirty state changes call `doc.markDirty(isDirty)` synchronously from `view.update`.
+- Both the `setContent` and `MARK_CLEAN_KEY` transactions complete in the same JS turn so the
+  DOM never renders an intermediate dirty=true state.
+
+Dirty state in source mode: `EditorContainer.handleChange` calls `doc.markDirty(true)` on
+every CodeMirror change.
+
+### Undo stack (supersedes Day 8 mode-switch behaviour)
+
+Both EditorPane and SourcePane are **always mounted**, hidden with `display:none` via CSS.
+This preserves each pane’s undo stack across mode switches. Switching modes is a CSS toggle,
+not a DOM teardown. Previous behaviour (using `{#if}`) destroyed the undo stack on every
+switch — this is fixed.
+
+### Word count (supersedes Day 6 store-derived count)
+
+Word count is derived by the `WordCount` PM plugin and pushed to the `wordCount` store.
+`StatusBar` reads the `wordCount` store directly — it does not derive count from content.
+
+### Headings (supersedes Day 10 HeadingId + separate extraction)
+
+`src/lib/Headings.ts` is a single PM plugin that does one doc traversal per transaction and
+produces both the heading list (pushed to `headings` store) and the heading ID decorations
+(for sidebar anchor links). The old `HeadingId.ts` is deleted.
+
+### Playwright test helper pattern
+
+Tests that need a file loaded use a two-step evaluate mirroring `fileService.openFile()`:
+
+```typescript
+async function loadContent(page, markdown, filePath) {
+	await page.evaluate(async ({ md, path }) => {
+		const { getRichHandle } = await import(‘/src/lib/editor.ts’);
+		const { document } = await import(‘/src/lib/stores/document.ts’);
+		getRichHandle()?.setContent(md, { markClean: true });
+		document.load(path);
+	}, { md: markdown, path: filePath });
+}
+```
+
+**Never** call `document.load(content, path)` — the store no longer accepts a content argument.
 
 ### Rich text: blockquotes
 

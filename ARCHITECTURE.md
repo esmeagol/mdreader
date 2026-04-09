@@ -2,14 +2,15 @@
 
 ## Guiding Principles
 
-1. **Single owner per concern.** Every piece of state and every UI zone has exactly one owner. Nothing is managed in two places.
-2. **Components are dumb.** Components receive props and emit events. They do not call other components' methods, touch `window`, or call Tauri APIs directly.
-3. **Single writer per state.** Each piece of shared state exposes named operations — not a raw setter. When something is wrong, you check the operations, not every callsite.
-4. **Test at the right layer.** Pure logic with Vitest. Rust I/O with `cargo test` and real files. UI behavior with Playwright against the Vite dev server. Don't test the Tauri `invoke` wiring from the browser — keep it thin enough to be obviously correct.
-5. **No mocking.** Mocks duplicate the contract they're supposed to verify. Instead, keep the JS-to-Tauri boundary thin and test each side in its natural environment.
-6. **Zones are stable.** The layout grid is owned by one component (`AppShell`) and never touched by anyone else. Adding a new zone means editing one file.
-7. **Explicit over implicit.** Prefer props and named function calls over reactive chains. When something breaks, you should be able to follow a call stack, not trace reactive subscriptions.
-8. **Reader width is responsive, not full-bleed.** The reading column is centered with a max-width token, but scrolling is owned by the outer editor zone so the scrollbar stays at the far-right edge.
+1. **ProseMirror is the source of truth for document content.** Content lives in the editor; the document store holds only file metadata (path, dirty flag, save state). Nothing reads content from the store.
+2. **Single owner per concern.** Every piece of state and every UI zone has exactly one owner. Nothing is managed in two places.
+3. **Components are dumb.** Components receive props and emit events or call `onReady` callbacks. They do not call other components' methods, touch `window`, or call Tauri APIs directly.
+4. **Single writer per state.** Each piece of shared state exposes named operations — not a raw setter. When something is wrong, you check the operations, not every callsite.
+5. **Test at the right layer.** Pure logic with Vitest. Rust I/O with `cargo test` and real files. UI behaviour with Playwright against the Vite dev server. Don't test the Tauri `invoke` wiring from the browser — keep it thin enough to be obviously correct.
+6. **No mocking.** Mocks duplicate the contract they're supposed to verify. Instead, keep the JS-to-Tauri boundary thin and test each side in its natural environment.
+7. **Zones are stable.** The layout grid is owned by one component (`AppShell`) and never touched by anyone else. Adding a new zone means editing one file.
+8. **Explicit over implicit.** Prefer props and named function calls over reactive chains. When something breaks, you should be able to follow a call stack, not trace reactive subscriptions.
+9. **Reader width is responsive, not full-bleed.** The reading column is centered with a max-width token, but scrolling is owned by the outer editor zone so the scrollbar stays at the far-right edge.
 
 ---
 
@@ -20,18 +21,25 @@ src/
 ├── app.css                        # Design tokens (CSS vars) + global reset only
 ├── routes/
 │   ├── +layout.svelte             # HTML shell: imports app.css, drives theme via $effect
-│   └── +page.svelte               # App entry — state owner, shortcut handler, thin wiring
+│   └── +page.svelte               # App entry — UI state owner, shortcut handler, thin wiring
 └── lib/
     ├── components/
     │   ├── AppShell.svelte        # Grid owner — exposes named snippet slots
-    │   ├── Sidebar.svelte         # Outline panel — reads document store
+    │   ├── Sidebar.svelte         # Outline panel — reads headings store
     │   ├── Toolbar.svelte         # Formatting strip — empty slot initially
-    │   ├── EditorContainer.svelte # Mode coordinator (rich ↔ source)
-    │   ├── EditorPane.svelte      # TipTap — dumb, content in / onChange out
-    │   ├── SourcePane.svelte      # CodeMirror — dumb, content in / onChange out
-    │   └── StatusBar.svelte       # Word count, file info — reads document store
+    │   ├── EditorContainer.svelte # Mode coordinator (rich ↔ source); owns handle refs
+    │   ├── EditorPane.svelte      # TipTap — mounts PM plugins, exposes EditorHandle
+    │   ├── SourcePane.svelte      # CodeMirror — exposes EditorHandle
+    │   └── StatusBar.svelte       # Word count, file info — reads stores
     ├── stores/
-    │   └── document.ts            # Document state with named write operations
+    │   ├── document.ts            # File metadata only: filePath, isDirty, lastSaved, saveError
+    │   ├── headings.ts            # Heading list derived by PM plugin; read by Sidebar
+    │   └── wordCount.ts           # Word count derived by PM plugin; read by StatusBar
+    ├── editor.ts                  # EditorHandle interface + module-level singletons
+    ├── fileService.ts             # All Tauri file I/O (open, save, saveAs, newFile)
+    ├── DirtyState.ts              # TipTap extension: tracks dirty via PM doc.eq()
+    ├── Headings.ts                # TipTap extension: extracts headings + stamps heading IDs
+    ├── WordCount.ts               # TipTap extension: counts words from PM doc
     └── utils.ts                   # Pure functions (formatWordCount, formatTitle, etc.)
 ```
 
@@ -41,13 +49,13 @@ src/
 
 ```
 +layout.svelte
-└── +page.svelte              (owns: sidebarVisible, isDistractionFree, shortcut handler)
+└── +page.svelte              (owns: sidebarVisible, isDistractionFree, editorMode, fontSize)
       └── AppShell            (owns: CSS grid)
             ├── [sidebar]   → Sidebar
             ├── [toolbar]   → Toolbar
-            ├── [editor]    → EditorContainer  (owns: editorMode)
-            │                     ├── EditorPane   (shown in rich mode)
-            │                     └── SourcePane   (shown in source mode)
+            ├── [editor]    → EditorContainer  (owns: richHandle, sourceHandle refs)
+            │                     ├── EditorPane   (always mounted; hidden in source mode)
+            │                     └── SourcePane   (always mounted; hidden in rich mode)
             └── [statusbar] → StatusBar
 ```
 
@@ -78,166 +86,150 @@ Props: four named Svelte 5 snippets — `sidebar`, `toolbar`, `editor`, `statusb
 Adding a future zone (e.g. a breadcrumb bar): add one row to the grid in AppShell, add one
 snippet prop. Nothing else changes.
 
-AppShell's `.zone-editor` is also the scroll container (`overflow-y: auto`). Inner editor
-content should avoid creating a second vertical scrollbar.
+AppShell's `.zone-editor` is the scroll container (`overflow-y: auto`). Inner editor content
+should avoid creating a second vertical scrollbar.
 
 ### `+page.svelte`
 
-Owns application-level UI state and the keyboard shortcut handler. Tauri is wired with thin
-`invoke` helpers and dialog imports in the same file. **Window close** uses Tauri 2’s
-`getCurrentWindow().onCloseRequested()`: if the document is clean, the handler returns
-without `preventDefault()` and the runtime closes the window (via `destroy()` internally);
-if dirty, the handler calls `preventDefault()`, runs the native **ask** dialog, and calls
-`destroy()` only when the user confirms quit. There is **no** Rust `on_window_event` hook
-that `prevent_close`s and re-emits a custom event — that pattern was removed to match the
-supported JS API and ACL permissions (`core:window:allow-close`, `core:window:allow-destroy`).
+Owns application-level UI state and the keyboard shortcut handler. Delegates all file I/O to
+`fileService.ts`. The `editorMode` prop is owned here and passed down to `EditorContainer` so
+app-level shortcuts (Cmd+/) can toggle it.
 
 ```svelte
 <script lang="ts">
+	import { openFile, save, saveAs, newFile } from '$lib/fileService';
+
 	let sidebarVisible = $state(true);
 	let isDistractionFree = $state(false);
+	let editorMode = $state<'rich' | 'source'>('rich');
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.metaKey && !e.shiftKey) {
-			if (e.key === 'o') {
-				e.preventDefault();
-				openFile();
-			}
-			if (e.key === 's') {
-				e.preventDefault();
-				save();
-			}
-			if (e.key === 'n') {
-				e.preventDefault();
-				newFile();
-			}
-			if (e.key === '/') {
-				e.preventDefault();
-				toggleSourceMode();
-			}
+			if (e.key === 'o') { e.preventDefault(); openFile(); }
+			if (e.key === 's') { e.preventDefault(); save(); }
+			if (e.key === 'n') { e.preventDefault(); newFile(); }
+			if (e.key === '/') { e.preventDefault(); editorMode = editorMode === 'rich' ? 'source' : 'rich'; }
 		}
 		if (e.metaKey && e.shiftKey) {
-			if (e.key === 's') {
-				e.preventDefault();
-				saveAs();
-			}
-			if (e.key === 'f') {
-				e.preventDefault();
-				isDistractionFree = !isDistractionFree;
-			}
-			if (e.key === 'l') {
-				e.preventDefault();
-				sidebarVisible = !sidebarVisible;
-			}
+			if (e.key === 'S') { e.preventDefault(); saveAs(); }
+			if (e.key === 'F') { e.preventDefault(); isDistractionFree = !isDistractionFree; }
+			if (e.key === 'L') { e.preventDefault(); sidebarVisible = !sidebarVisible; }
 		}
 	}
 </script>
-
-<svelte:window on:keydown={handleKeydown} />
 ```
 
-Every app-level shortcut is visible in one function. No registration, no cleanup, no ghost
-listeners. Editor-internal shortcuts (Cmd+B, Cmd+I, Cmd+`) stay inside `EditorPane` — they
-are editor concerns, not app concerns.
+Every app-level shortcut is visible in one function. Editor-internal shortcuts (Cmd+B, Cmd+I,
+Cmd+`) stay inside `EditorPane` — they are editor concerns, not app concerns.
+
+**Window close** uses Tauri 2's `getCurrentWindow().onCloseRequested()`. If the document is
+clean, the handler returns without `preventDefault()` and the runtime closes. If dirty, it
+calls `preventDefault()`, shows a native `ask` dialog, and calls `destroy()` only when the
+user confirms.
 
 ### `EditorContainer.svelte`
 
-Owns the rich ↔ source mode switch and content synchronisation between modes.
+Owns the rich ↔ source mode switch and content synchronisation between modes. Holds
+`EditorHandle` refs for both panes (`richHandle`, `sourceHandle`).
 
-Reads `document` store for initial content on mount. Writes to `document` via named
-operations on every change. Holds `editorMode` as local `$state()` — nothing outside
-`EditorContainer` needs to know which mode is active.
+**Both panes are always mounted** — hidden with `display:none` (CSS class `hidden`) rather
+than `{#if}`. This preserves each pane's undo stack across mode switches.
 
-Does **not** call `EditorPane` or `SourcePane` methods via a ref. It passes `content` as a
-prop and receives `onChange` callbacks. **`handleChange` must not call `document.update`
-when the markdown is unchanged** (same string as the store) so spurious editor callbacks do
-not set `isDirty` after a file load or prop-driven sync.
+On mode switch, `EditorContainer` syncs content from the leaving pane to the entering pane
+by calling `handle.setContent(content)` **without** `{ markClean: true }`. Omitting that flag
+preserves the DirtyState clean baseline — switching modes does not reset dirty state.
+
+After a save (`$doc.lastSaved` changes), calls `richHandle.markSaved()` to reset the PM
+dirty baseline to the saved document.
+
+Source mode dirty tracking is simple: the `handleChange` callback calls `doc.markDirty(true)`
+on every CodeMirror change. Rich mode dirty tracking is owned by the `DirtyState` PM plugin.
 
 ```svelte
-<script lang="ts">
-	import { document } from '$lib/stores/document';
-
-	let editorMode = $state<'rich' | 'source'>('rich');
-	let content = $state(document.get().content);
-
-	function handleChange(md: string) {
-		content = md;
-		if (md === document.get().content) return;
-		document.update(md);
-	}
-
-	function toggleMode() {
-		editorMode = editorMode === 'rich' ? 'source' : 'rich';
-	}
-</script>
-
-{#if editorMode === 'rich'}
-	<EditorPane {content} onChange={handleChange} />
-{:else}
-	<SourcePane {content} onChange={handleChange} />
-{/if}
+<div class:hidden={editorMode !== 'rich'}>
+	<EditorPane content="" onChange={handleChange} onReady={(h) => richHandle = h} {theme} />
+</div>
+<div class:hidden={editorMode !== 'source'}>
+	<SourcePane content="" onChange={handleChange} onReady={(h) => sourceHandle = h} {theme} />
+</div>
 ```
 
 ### `EditorPane.svelte`
 
-Owns the TipTap instance. Handles editor-internal shortcuts (bold, italic, etc.).
+Owns the TipTap instance. Handles editor-internal shortcuts (bold, italic, etc.). Mounts the
+three PM-layer extensions: `DirtyState`, `WordCount`, `Headings`.
 
-Props: `content: string`, `onChange: (md: string) => void`, `theme: 'light' | 'dark'`.
+On mount, creates an `EditorHandle` and calls both `setRichHandle(handle)` (module singleton
+for `fileService`) and `onReady?.(handle)` (prop callback for `EditorContainer`). On destroy,
+calls `setRichHandle(null)`.
 
-When the `content` prop changes from outside (e.g. `document.load` after **Cmd+O**), the
-`$effect` that calls `setContent` uses **`{ emitUpdate: false }`** so TipTap does not fire
-`onUpdate` for that replacement — otherwise the store would immediately receive `update()`
-and mark the file dirty even though the user did not edit.
+`setContent` calls TipTap's `setContent` with `{ emitUpdate: false }` to avoid triggering
+`onUpdate`. It dispatches a `MARK_CLEAN_KEY` transaction only when `opts?.markClean` is
+explicitly true — this resets the DirtyState plugin's clean baseline. Mode-switch syncs call
+`setContent` without `markClean` so they do not reset dirty state.
 
-Blockquotes and other rich nodes have **explicit `:global(.tiptap …)` styles** here (e.g.
-`blockquote` with border and muted text) so they read as structured content, not plain
-paragraphs.
+```typescript
+const handle: EditorHandle = {
+	setContent(markdown, opts) {
+		editor.commands.setContent(markdown, { emitUpdate: false });
+		if (opts?.markClean) {
+			editor.view.dispatch(editor.state.tr.setMeta(MARK_CLEAN_KEY, true));
+		}
+	},
+	getContent(): string { return getMarkdown(editor); },
+	markSaved() {
+		editor.view.dispatch(editor.state.tr.setMeta(MARK_CLEAN_KEY, true));
+	}
+};
+```
 
-Does not know about: source mode, file I/O, stores, Tauri.
+Does not know about: source mode, file I/O, the document store's content, Tauri.
 
 ### `SourcePane.svelte`
 
-Owns the CodeMirror instance.
+Owns the CodeMirror instance. Uses a CM `Annotation` to distinguish externally-dispatched
+transactions from user edits so that programmatic syncs do not call `onChange` (which would
+mark the document dirty).
 
-Props: `content: string`, `onChange: (md: string) => void`, `theme: 'light' | 'dark'`.
+On mount, creates an `EditorHandle` and calls `setSourceHandle(handle)` and `onReady?.(handle)`.
 
-When the `$effect` replaces the full document to match a new `content` prop, it sets a
-**suppress flag** so the `updateListener` does not call `onChange` for that programmatic
-transaction — otherwise an external load would mark the document dirty.
+`setContent` options are accepted but ignored — there is no PM dirty plugin in the source pane.
+Dirty state in source mode is tracked by `EditorContainer.handleChange`.
 
 Does not know about: rich mode, file I/O, stores, Tauri.
 
 ### `Sidebar.svelte`
 
-Reads `document.get().content` to derive the heading list. Emits a `navigate` event with a
-heading ID. `EditorContainer` listens and scrolls.
+Reads the `headings` store (populated by the `Headings` PM plugin in `EditorPane`). Renders
+the outline list. Clicking a heading scrolls the editor to the matching element by `id`
+(the ID is stamped by the same `Headings` plugin via ProseMirror decorations).
 
 Does not hold any content state of its own.
 
 ### `StatusBar.svelte`
 
-Reads `document` store: content (word count), filePath, isDirty. Renders only. Emits nothing.
+Reads the `wordCount` store (populated by the `WordCount` PM plugin) and the `document` store
+(filePath, isDirty, saveError). Renders only. Emits nothing.
 
 ### `+layout.svelte`
 
 Owns the `<title>` tag and the theme. Both are driven by `$effect` — they are reactive
-consequences of store state, never set with imperative `document.title = ...` calls scattered
-through the codebase.
+consequences of store state, never set imperatively scattered through the codebase.
 
 ```svelte
 <script lang="ts">
-	import { document } from '$lib/stores/document';
+	import { document as doc } from '$lib/stores/document';
 	import { formatTitle } from '$lib/utils';
 
 	$effect(() => {
-		const { filePath, isDirty } = document.get();
+		const { filePath, isDirty } = doc.get();
 		window.document.title = formatTitle(filePath, isDirty);
 	});
 
 	$effect(() => {
 		const mq = window.matchMedia('(prefers-color-scheme: dark)');
 		const apply = () => {
-			document.documentElement.dataset.theme = mq.matches ? 'dark' : 'light';
+			window.document.documentElement.dataset.theme = mq.matches ? 'dark' : 'light';
 		};
 		apply();
 		mq.addEventListener('change', apply);
@@ -250,155 +242,142 @@ through the codebase.
 
 ## State Management
 
-### `document` store — single writer rule
+### Document content — ProseMirror only
 
-The `document` store exposes named operations, not a raw setter. Every mutation has a name
-that describes its intent. When a bug causes `isDirty` to be wrong, there are four functions
-to check — not every `store.update()` callsite in the codebase.
+Document content lives exclusively in ProseMirror (or CodeMirror in source mode). No store
+holds a copy. `fileService` reads content via `getActiveContent()` from the module-level
+handle singletons at save time. This means:
+
+- No store-triggered re-renders on every keystroke
+- Word count, headings, and dirty state are derived by PM plugins from the actual doc node
+- Content is not duplicated between store and editor
+
+### `document` store — file metadata only
 
 ```typescript
-// src/lib/stores/document.ts
 interface DocumentState {
-	content: string;
 	filePath: string | null;
 	isDirty: boolean;
 	lastSaved: Date | null;
+	saveError: string | null;
 }
-
-export const document = (() => {
-	let state = $state<DocumentState>({
-		content: '',
-		filePath: null,
-		isDirty: false,
-		lastSaved: null
-	});
-
-	return {
-		get: () => state,
-		// Called when a file is opened or a new file is created
-		load(content: string, filePath: string | null) {
-			state = { content, filePath, isDirty: false, lastSaved: null };
-		},
-		// Called on every keystroke
-		update(content: string) {
-			state = { ...state, content, isDirty: true };
-		},
-		// Called after a successful save
-		markSaved() {
-			state = { ...state, isDirty: false, lastSaved: new Date() };
-		},
-		// Called by Cmd+N
-		reset() {
-			state = { content: '', filePath: null, isDirty: false, lastSaved: null };
-		}
-	};
-})();
 ```
 
-Use `$inspect(document.get())` anywhere during development for a live console view of
-document state without adding any permanent logging.
+Named operations:
+
+| Operation | When called | Effect |
+| --- | --- | --- |
+| `load(filePath)` | After a file is opened | Sets path, clears dirty/error |
+| `markDirty(bool)` | DirtyState plugin (rich) or handleChange (source) | Sets isDirty |
+| `markSaved()` | After successful save | Clears dirty, records timestamp, clears error |
+| `setFilePath(path)` | After saveAs picks a new path | Updates path without touching isDirty |
+| `markSaveError(msg)` | After failed save | Sets saveError |
+| `reset()` | Cmd+N | Returns to empty state |
+
+### `headings` and `wordCount` stores
+
+Simple writable stores set by PM plugins (`Headings`, `WordCount`) during `view.update`.
+Read by `Sidebar` and `StatusBar`. They are updated synchronously during the PM transaction
+cycle — no debouncing, no `$effect` chains.
+
+### `EditorHandle` singletons (`src/lib/editor.ts`)
+
+Module-level refs set by EditorPane/SourcePane on mount, cleared on destroy. Used by
+`fileService` to push content to editors on file open, and to read content at save time.
+
+```typescript
+export interface EditorHandle {
+	setContent(markdown: string, opts?: { markClean?: boolean }): void;
+	getContent(): string;
+	markSaved(): void;
+}
+// getRichHandle(), getSourceHandle(), getActiveContent(), setActiveMode()
+```
+
+`setActiveMode` is called by `EditorContainer` on every mode switch so `getActiveContent()`
+always returns content from the visible pane.
 
 ### UI state — co-located, not centralised
 
-There is no `ui` store. Each piece of UI state lives as close to its owner as possible and
-is only lifted when genuinely shared across distant components.
+There is no `ui` store. Each piece of UI state lives as close to its owner as possible.
 
-| State               | Owner                      | Shared via                              |
-| ------------------- | -------------------------- | --------------------------------------- |
-| `sidebarVisible`    | `+page.svelte`             | Prop to AppShell                        |
-| `isDistractionFree` | `+page.svelte`             | Prop to AppShell                        |
-| `editorMode`        | `EditorContainer`          | Internal `$state()`                     |
-| `theme`             | `+layout.svelte` `$effect` | `data-theme` on `<html>` — CSS cascades |
-| `fontSize`          | `+page.svelte` handler     | CSS variable on `<html>` — CSS cascades |
-
-CSS-cascaded values (theme, font size) do not need a store at all. Components inherit them
-automatically through custom properties.
+| State               | Owner              | Shared via                              |
+| ------------------- | ------------------ | --------------------------------------- |
+| `sidebarVisible`    | `+page.svelte`     | Prop to AppShell                        |
+| `isDistractionFree` | `+page.svelte`     | Prop to AppShell                        |
+| `editorMode`        | `+page.svelte`     | Prop to EditorContainer                 |
+| `theme`             | `+layout.svelte`   | `data-theme` on `<html>` — CSS cascades |
+| `fontSize`          | `+page.svelte`     | CSS variable on `<html>` — CSS cascades |
 
 ---
 
-## File I/O — thin and direct
+## File I/O — `fileService.ts`
 
-There is no `FileService` interface. Tauri `invoke` calls live directly in `+page.svelte`
-as plain async functions. The layer is thin enough to be obviously correct without testing.
+All Tauri `invoke` calls live in `src/lib/fileService.ts`. `+page.svelte` imports named
+functions and calls them directly — no arguments needed because file content is always read
+from the active editor handle.
 
 ```typescript
-// In +page.svelte
-import { invoke } from '@tauri-apps/api/core';
-import { open, save } from '@tauri-apps/plugin-dialog';
-
-async function openFile() {
-	const selected = await open({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
-	if (!selected || Array.isArray(selected)) return;
+// Open: push content to both handles, then update store metadata
+export async function openFile(path?: string): Promise<void> {
 	const content = await invoke<string>('open_file', { path: selected });
-	document.load(content, selected);
+	getRichHandle()?.setContent(content, { markClean: true });
+	getSourceHandle()?.setContent(content);
+	doc.load(selected);
 }
 
-async function save() {
-	const { content, filePath } = document.get();
-	if (!filePath) return saveAs();
-	await invoke('save_file', { path: filePath, content });
-	document.markSaved();
+// Save: read from active handle, write to Rust
+export async function save(): Promise<void> {
+	const content = getActiveContent();
+	await invoke<void>('save_file', { content });
+	doc.markSaved();
 }
 
-async function saveAs() {
-	const { content } = document.get();
-	const path = await save({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
-	if (!path) return;
-	await invoke('save_file', { path, content });
-	document.load(content, path);
-	document.markSaved();
-}
-```
-
-The Rust side of `open_file` and `save_file` is tested thoroughly with `cargo test` using
-real temporary files. The JS side has two lines per operation — there is nothing to mock and
-nothing to test separately.
-
----
-
-## Testing Strategy
-
-No mocks. Each layer is tested in its natural environment.
-
-| Layer                 | Tool                          | What is tested                                                                                              |
-| --------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Pure functions        | Vitest                        | `formatWordCount`, `formatTitle`, heading extraction, markdown round-trips                                  |
-| Rust file I/O         | `cargo test` + real tempfiles | `read_markdown_file`, `write_markdown_file`, validation                                                     |
-| UI behaviour          | Playwright + Vite dev server  | Rendering, editing, mode toggle, layout, shortcuts, multi-section fixture (`tests/sections-render.test.ts`) |
-| Tauri `invoke` wiring | Not unit tested — kept thin   | Reviewed, tested via manual/integration run                                                                 |
-
-Playwright tests run against the Vite dev server (no Tauri binary). This means `invoke` is
-not available in those tests. The solution is not to mock it — it is to structure tests so
-they test UI behaviour that does not depend on file I/O (rendering, editing, mode toggle,
-word count, layout), and accept that the open/save flow is verified at the Rust level and
-through infrequent integration runs.
-
----
-
-## Theme System
-
-Themes are CSS custom property sets keyed on a `data-theme` attribute, not class toggles.
-This means every component inherits theme values automatically without subscribing to anything.
-
-```css
-/* app.css */
-:root {
-	--color-bg: #ffffff;
-	--color-text: #1a1a1a;
-	--color-border: #e0e0e0;
-}
-[data-theme='dark'] {
-	--color-bg: #1e1e1e;
-	--color-text: #d4d4d4;
-	--color-border: #3a3a3a;
+// New file: clear both handles, reset store
+export function newFile(): void {
+	getRichHandle()?.setContent('', { markClean: true });
+	getSourceHandle()?.setContent('');
+	doc.reset();
 }
 ```
 
-`+layout.svelte` sets `document.documentElement.dataset.theme` in a single `$effect`.
-Nothing else ever sets the theme attribute.
+The pattern on file open is always: **push content to editors first, then update store**. This
+ensures handles are populated before any reactive effects fire in response to store changes.
 
-`EditorPane` and `SourcePane` receive `theme` as a plain `'light' | 'dark'` prop so their
-internal instances (TipTap, CodeMirror) can adapt their own themes without reading the DOM.
+`markClean: true` is passed only on genuine file loads and saves — not on mode-switch syncs.
+This distinction is critical: it tells the `DirtyState` plugin to reset its clean baseline.
+
+---
+
+## PM Plugins
+
+### `DirtyState` (`src/lib/DirtyState.ts`)
+
+Tracks whether the PM document differs from the last clean version using `doc.eq(cleanDoc)`
+(structural node equality, not string comparison).
+
+- `cleanDoc` is initialised to the doc at editor creation.
+- Any transaction carrying `MARK_CLEAN_KEY` meta resets `cleanDoc` to the current doc.
+- When dirty state changes, calls `onDirtyChange(isDirty)` from `view.update` (synchronous,
+  outside transactions — safe to call Svelte stores).
+
+Because `setContent` and `MARK_CLEAN_KEY` dispatch are batched in the same JS turn on file
+load, the DOM never renders an intermediate dirty=true state.
+
+### `WordCount` (`src/lib/WordCount.ts`)
+
+On `tr.docChanged`, counts words from `tr.doc.textContent` and updates the `wordCount` store.
+
+### `Headings` (`src/lib/Headings.ts`)
+
+Single doc traversal per transaction. Produces two outputs:
+
+1. **Heading list** — calls `onHeadingsChange(headings)` to update the `headings` store (read
+   by Sidebar).
+2. **Heading ID decorations** — stamps `id` attributes on heading nodes so sidebar anchor links
+   work without manually querying the DOM.
+
+`headingsEqual()` prevents redundant store updates when the heading list is unchanged.
 
 ---
 
@@ -406,122 +385,156 @@ internal instances (TipTap, CodeMirror) can adapt their own themes without readi
 
 ```
 ── File open ──────────────────────────────────────────────────────────────
-Cmd+O → handleKeydown → openFile()
-  → Tauri dialog plugin → user picks file
-  → invoke('open_file', { path })   [Rust reads file, tested with cargo test]
-  → document.load(content, path)
-  → EditorContainer reacts to document.get().content → passes content prop to EditorPane
-  → EditorPane setContent(..., { emitUpdate: false }) / SourcePane suppressed dispatch
-    so the initial sync does not call document.update — isDirty stays false
-  → StatusBar reacts → word count updates
-  → +layout.svelte $effect → <title> updates
+Cmd+O → handleKeydown → fileService.openFile()
+  → Tauri dialog → user picks file
+  → invoke('open_file', { path })   [Rust reads file]
+  → getRichHandle().setContent(content, { markClean: true })
+      → TipTap setContent({ emitUpdate: false })
+      → dispatch tr with MARK_CLEAN_KEY → DirtyState resets cleanDoc
+  → getSourceHandle().setContent(content)
+  → doc.load(path)
+  → WordCount plugin → wordCount store → StatusBar updates
+  → Headings plugin → headings store → Sidebar updates
+  → +layout.svelte $effect → <title> updates (filename, clean)
 
 ── User types ─────────────────────────────────────────────────────────────
-EditorPane onChange(md)
-  → EditorContainer.handleChange(md)
-  → document.update(md)   (skipped when md === store content)
-  → StatusBar reacts → word count updates
-  → Sidebar reacts → heading list re-derived
+PM transaction (rich mode)
+  → DirtyState plugin: doc.eq(cleanDoc) → false → onDirtyChange(true)
+  → doc.markDirty(true)
+  → WordCount plugin → wordCount store → StatusBar updates
+  → Headings plugin → headings store → Sidebar updates (if heading changed)
   → +layout.svelte $effect → <title> gains dirty indicator
 
 ── Save ───────────────────────────────────────────────────────────────────
-Cmd+S → handleKeydown → save()
-  → reads document.get().{ content, filePath }
-  → invoke('save_file', { path, content })   [Rust writes file]
-  → document.markSaved()
+Cmd+S → handleKeydown → fileService.save()
+  → getActiveContent()   [reads from active handle — no store involved]
+  → invoke('save_file', { content })   [Rust writes file]
+  → doc.markSaved()
+  → EditorContainer $effect: richHandle.markSaved()
+      → dispatch tr with MARK_CLEAN_KEY → DirtyState resets cleanDoc
   → +layout.svelte $effect → dirty indicator removed from <title>
 
+── Mode switch ────────────────────────────────────────────────────────────
+Cmd+/ → editorMode toggles in +page.svelte → prop to EditorContainer
+  → EditorContainer $effect: setActiveMode(mode)
+  → sync: sourceHandle.setContent(richHandle.getContent())  [no markClean]
+  → CSS class swap: rich pane hidden, source pane visible
+  → undo stacks preserved (both panes always mounted)
+
 ── Distraction-free ───────────────────────────────────────────────────────
-Cmd+Shift+F → handleKeydown
-  → isDistractionFree = !isDistractionFree   (local $state in +page.svelte)
-  → prop flows to AppShell → CSS class toggles → sidebar + status bar hidden
+Cmd+Shift+F → isDistractionFree toggles → prop to AppShell → CSS class
 ```
 
 ---
 
-## Adding a New Component
+## Testing Strategy
 
-The pattern is always the same:
+No mocks. Each layer is tested in its natural environment.
 
-1. Create the component in `src/lib/components/`
-2. Read from `document` store if it needs document state; receive props for everything else
-3. Call named operations on `document` if it mutates state — never set raw fields
-4. If it has editor-internal shortcuts, register them with `svelte:window` inside itself, not through any central registry
-5. Drop it into the appropriate AppShell snippet slot in `+page.svelte`
+| Layer | Tool | What is tested |
+| --- | --- | --- |
+| Pure functions | Vitest | `formatWordCount`, `formatTitle`, heading extraction, markdown round-trips |
+| Document store | Vitest | All named operations and state transitions |
+| Rust file I/O | `cargo test` + real tempfiles | `read_markdown_file`, `write_markdown_file`, validation |
+| UI behaviour | Playwright + Vite dev server | Rendering, editing, mode toggle, dirty state, layout, shortcuts |
+| Tauri `invoke` wiring | Not unit tested — kept thin | Reviewed; tested via manual/integration run |
 
-No registration, no interface to implement, no DI container. The grid never changes.
+**Test helper pattern** — Playwright tests that need a file loaded use a two-step evaluate:
+
+```typescript
+async function loadContent(page, markdown, filePath) {
+	await page.evaluate(async ({ md, path }) => {
+		const { getRichHandle } = await import('/src/lib/editor.ts');
+		const { document } = await import('/src/lib/stores/document.ts');
+		getRichHandle()?.setContent(md, { markClean: true });
+		document.load(path);
+	}, { md: markdown, path: filePath });
+}
+```
+
+This mirrors exactly what `fileService.openFile()` does: push content to editor first, then
+update store metadata. The `markClean: true` flag prevents a false dirty state.
+
+---
+
+## Adding a New Feature
+
+### Adding a new PM-driven signal (e.g. spell-check, diagram rendering)
+
+1. Create `src/lib/YourPlugin.ts` — a TipTap `Extension.create()` wrapping a PM `Plugin`
+2. The plugin's `view.update` or `apply` computes the signal and calls a callback
+3. If the result is needed by other components, write a small Svelte store and update it from
+   the callback
+4. Wire the extension into `EditorPane.svelte`'s `extensions` array with the callback
+
+No changes to `document` store, `fileService`, or `EditorContainer`.
+
+### Adding a new layout zone (e.g. breadcrumb bar)
+
+1. Add one row to the CSS grid in `AppShell.svelte`
+2. Add one snippet prop to AppShell
+3. Create the component and drop it into the new slot in `+page.svelte`
+
+### Adding tabs
+
+Each tab needs: an `EditorHandle` (from a mounted EditorPane/SourcePane), and a `DocumentState`
+instance. The current single-document shape already supports this — the handles are plain
+objects and the store is a thin bag. The refactor needed is: make both pane components
+accept a `tabId` to register separate handles, and swap the active handle pair on tab switch.
+`fileService` functions already read content via `getActiveContent()` and write metadata via
+`doc.load()` — they would work unchanged if you swap what "active" means.
 
 ---
 
 ## Tradeoffs
 
-### Stores as the communication channel
+### ProseMirror plugins for derived state
 
-**Gained:** Components don't know about each other. StatusBar updating on every keystroke
-is a reactive consequence of `document.update()`, not a method call chain.
+**Gained:** Word count, headings, and dirty state update from a single PM doc traversal per
+transaction. No `$effect` chains, no store-triggered re-parses, no string diffs. Correct
+structural equality (`doc.eq`) instead of string comparison for dirty detection.
 
-**Cost:** Reactivity is implicit. When the status bar shows the wrong count, the cause could
-be any of the four named operations — or a bug in the derived word count logic. With direct
-refs the call site is the bug site; with stores you trace subscribers. `$inspect()` mitigates
-this but does not eliminate it.
+**Cost:** PM plugin code is more verbose than a Svelte `$derived`. The `apply` / `view.update`
+split and the `PluginKey` pattern require familiarity with ProseMirror internals.
 
-**Cost:** Svelte store subscriptions are synchronous. `Sidebar` re-deriving headings on every
-keystroke in a 10K-line document is expensive. Debouncing the `document.update()` call or
-deriving headings lazily adds complexity not currently in the plan.
+### Module-level handle singletons
 
-### Single writer rule
+**Gained:** `fileService` can read/write editor content without routing through the store. No
+prop-drilling or context threading needed for I/O operations.
 
-**Gained:** Four named operations to check when `isDirty` is wrong, not an unbounded number
-of `update()` callsites.
+**Cost:** The singletons are harder to test in isolation than injected dependencies. A unit
+test of `fileService` cannot easily supply a fake handle without importing the module and
+calling `setRichHandle` with a mock.
 
-**Cost:** Named operations are rigid. When a new feature needs a mutation that doesn't fit
-an existing operation (e.g. updating `filePath` without touching `content`), the temptation
-is to reach around the API with a raw state write. Discipline is required to keep the
-operations clean.
+### Both panes always mounted
+
+**Gained:** Undo stacks are preserved across mode switches — a direct user-visible improvement.
+The mode switch is a CSS toggle, not a DOM teardown.
+
+**Cost:** Both TipTap and CodeMirror instances are alive simultaneously, consuming memory and
+CPU even when hidden. For typical document sizes this is immaterial.
+
+### `editorMode` owned by `+page.svelte`
+
+**Gained:** The Cmd+/ shortcut and the mode prop live in the same component. No event bus or
+store is needed to communicate mode.
+
+**Cost:** `editorMode` is threaded as a prop through `+page.svelte` → `EditorContainer`. If a
+deeply nested component ever needs to toggle mode, prop-drilling becomes awkward.
+
+### No `content` in the document store
+
+**Gained:** Components that read the store (StatusBar, layout) do not re-render on every
+keystroke. Content changes are invisible to the store subscription graph.
+
+**Cost:** Content is only accessible via the editor handles. Code that needs the current
+content (e.g. a hypothetical export feature) must call `getActiveContent()` rather than
+reading a store field — which requires a handle to be mounted.
 
 ### Co-located UI state (no `ui` store)
 
-**Gained:** Each piece of state is where you'd expect to find it. Less reactive coupling
-between unrelated concerns — a font size change doesn't trigger layout subscribers.
+**Gained:** Each piece of state is where you'd expect to find it.
 
 **Cost:** State that needs to be accessible from both a component and a shortcut handler
-(e.g. `sidebarVisible`) must live in `+page.svelte` and be threaded as a prop. As the
-feature list grows, `+page.svelte` accumulates state variables. This is manageable at the
-current scale but could become a coordination point as the app grows.
-
-### Single `svelte:window` shortcut handler
-
-**Gained:** All app-level shortcuts visible in one function. No registration lifecycle, no
-cleanup burden, no ghost listeners.
-
-**Cost:** Shortcut conflicts are runtime errors, not compile-time errors. If a future
-component registers an editor-internal shortcut that collides with an app-level one, the
-conflict is only discovered at runtime. There is no static analysis that catches it.
-
-### Thin `invoke` layer with no abstraction
-
-**Gained:** No interface to maintain, no mock to keep in sync, no DI boilerplate. The wiring
-is obviously correct.
-
-**Cost:** The JS-to-Tauri boundary is not independently testable. If a Tauri plugin API
-changes (e.g. the `open` dialog returns a different shape), the only signal is a runtime
-failure. This is acceptable because the boundary is thin and Tauri plugin APIs are stable,
-but it means the integration is not covered by the automated test suite.
-
-### No mocking
-
-**Gained:** Tests exercise real behaviour. A passing test suite means real things work.
-
-**Cost:** Playwright tests against the Vite dev server cannot exercise file open/save flows,
-because `invoke` is not available without the Tauri runtime. These flows are tested at the
-Rust level and through manual runs. If the JS glue code around a file operation has a bug
-(wrong argument name, wrong error handling), the automated suite will not catch it.
-
-### `AppShell` named snippets
-
-**Gained:** Layout is owned in one place. Any day's implementation can freely replace the
-content of a zone without touching the grid.
-
-**Cost:** Svelte 5 snippets-as-props are not typed at the boundary. TypeScript cannot enforce
-that AppShell receives a snippet of the right shape. If a snippet is renamed or its expected
-structure changes, the error is a runtime rendering failure, not a compile-time type error.
+(e.g. `sidebarVisible`) must live in `+page.svelte` and be threaded as a prop. As the feature
+list grows, `+page.svelte` accumulates state variables.
