@@ -102,7 +102,8 @@
 						},
 						toggleDistractionFree: () => {
 							isDistractionFree = !isDistractionFree;
-						}
+						},
+						cycleTheme: () => themePreference.cycle()
 					});
 				} catch {
 					/* Native menu needs a full Tauri webview; partial mocks (e2e) skip quietly. */

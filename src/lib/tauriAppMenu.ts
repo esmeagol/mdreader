@@ -91,6 +91,12 @@ export async function installTauriAppMenu(handlers: AppMenuHandlers): Promise<vo
 				text: 'Toggle Distraction-Free',
 				accelerator: 'CmdOrCtrl+Shift+F',
 				action: onAction
+			}),
+			await MenuItem.new({
+				id: APP_MENU.ViewCycleTheme,
+				text: 'Cycle Theme',
+				accelerator: 'CmdOrCtrl+Shift+T',
+				action: onAction
 			})
 		]
 	});

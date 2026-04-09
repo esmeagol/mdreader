@@ -9,7 +9,8 @@ function mockHandlers(): AppMenuHandlers {
 		saveAs: vi.fn().mockResolvedValue(undefined),
 		toggleSourceMode: vi.fn(),
 		toggleSidebar: vi.fn(),
-		toggleDistractionFree: vi.fn()
+		toggleDistractionFree: vi.fn(),
+		cycleTheme: vi.fn()
 	};
 }
 
@@ -40,9 +41,11 @@ describe('dispatchAppMenuAction', () => {
 		dispatchAppMenuAction(APP_MENU.ViewToggleSource, h);
 		dispatchAppMenuAction(APP_MENU.ViewToggleSidebar, h);
 		dispatchAppMenuAction(APP_MENU.ViewToggleDistractionFree, h);
+		dispatchAppMenuAction(APP_MENU.ViewCycleTheme, h);
 		expect(h.toggleSourceMode).toHaveBeenCalledOnce();
 		expect(h.toggleSidebar).toHaveBeenCalledOnce();
 		expect(h.toggleDistractionFree).toHaveBeenCalledOnce();
+		expect(h.cycleTheme).toHaveBeenCalledOnce();
 	});
 
 	it('ignores unknown ids', () => {

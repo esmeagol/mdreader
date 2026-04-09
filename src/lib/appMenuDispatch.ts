@@ -6,7 +6,8 @@ export const APP_MENU = {
 	FileSaveAs: 'mdreader:file_save_as',
 	ViewToggleSource: 'mdreader:view_toggle_source',
 	ViewToggleSidebar: 'mdreader:view_toggle_sidebar',
-	ViewToggleDistractionFree: 'mdreader:view_distraction_free'
+	ViewToggleDistractionFree: 'mdreader:view_distraction_free',
+	ViewCycleTheme: 'mdreader:view_cycle_theme'
 } as const;
 
 export type AppMenuActionId = (typeof APP_MENU)[keyof typeof APP_MENU];
@@ -19,6 +20,7 @@ export interface AppMenuHandlers {
 	toggleSourceMode: () => void;
 	toggleSidebar: () => void;
 	toggleDistractionFree: () => void;
+	cycleTheme: () => void;
 }
 
 /** Maps native menu item ids to existing app actions (also used from menu `action` callbacks). */
@@ -44,6 +46,9 @@ export function dispatchAppMenuAction(id: string, handlers: AppMenuHandlers): vo
 			return;
 		case APP_MENU.ViewToggleDistractionFree:
 			handlers.toggleDistractionFree();
+			return;
+		case APP_MENU.ViewCycleTheme:
+			handlers.cycleTheme();
 			return;
 		default:
 			return;
