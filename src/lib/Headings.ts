@@ -60,11 +60,15 @@ export function Headings(onHeadingsChange: (headings: Heading[]) => void) {
 function buildState(doc: import('@tiptap/pm/model').Node) {
 	const decorations: Decoration[] = [];
 	const headings: Heading[] = [];
+	const seen = new Map<string, number>();
 
 	doc.descendants((node, pos) => {
 		if (node.type.name !== 'heading') return;
 		const text = node.textContent;
-		const slug = slugify(text);
+		const base = slugify(text);
+		const count = seen.get(base) ?? 0;
+		const slug = count === 0 ? base : `${base}-${count}`;
+		seen.set(base, count + 1);
 		decorations.push(Decoration.node(pos, pos + node.nodeSize, { id: slug }));
 		headings.push({ level: node.attrs.level as number, text, slug });
 	});
