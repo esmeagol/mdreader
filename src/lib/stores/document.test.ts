@@ -51,4 +51,13 @@ describe('document store', () => {
 		document.load('# New', '/new.md');
 		expect(document.get().saveError).toBeNull();
 	});
+
+	it('setFilePath updates filePath without touching content or isDirty', () => {
+		document.load('# Hello', '/old.md');
+		document.update('# Hello edited');
+		document.setFilePath('/new.md');
+		expect(document.get().filePath).toBe('/new.md');
+		expect(document.get().content).toBe('# Hello edited');
+		expect(document.get().isDirty).toBe(true);
+	});
 });

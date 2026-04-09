@@ -134,7 +134,7 @@
 		try {
 			await invokeTauri<void>('set_current_file', { path });
 			await invokeTauri<void>('save_file', { content });
-			doc.load(content, path);
+			doc.setFilePath(path);
 			doc.markSaved();
 		} catch (e) {
 			doc.markSaveError(e instanceof Error ? e.message : String(e));

@@ -29,6 +29,9 @@ function createDocumentStore() {
 		markSaved() {
 			store.update((s) => ({ ...s, isDirty: false, lastSaved: new Date(), saveError: null }));
 		},
+		setFilePath(path: string) {
+			store.update((s) => ({ ...s, filePath: path }));
+		},
 		markSaveError(message: string) {
 			store.update((s) => ({ ...s, saveError: message }));
 		},
