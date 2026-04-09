@@ -8,8 +8,7 @@
 		isDistractionFree: boolean;
 	}
 
-	let { sidebar, toolbar, editor, statusbar, sidebarVisible, isDistractionFree }: Props =
-		$props();
+	let { sidebar, toolbar, editor, statusbar, sidebarVisible, isDistractionFree }: Props = $props();
 </script>
 
 <div

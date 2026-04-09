@@ -88,16 +88,16 @@ Markdown Editor
 
 ## Schedule
 
-| Phase                   | Days  | Focus                                                                        |
-| ----------------------- | ----- | ---------------------------------------------------------------------------- |
-| 0 — Foundation          | 1–2   | Scaffold, CI (+Cargo cache), test infra                                      |
-| 1 — App Shell           | 3     | document store, AppShell slots, layout, status bar, shortcut handler         |
-| 2 — Core Editor         | 4–6   | EditorContainer + EditorPane (TipTap), extended nodes, source mode toggle    |
-| 3 — File System         | 7–9   | Capabilities config, open, new, save, quit dialog, recent files              |
-| 4 — Outline Sidebar     | 10–11 | Heading extraction, navigation, active highlight                             |
-| 5 — Polish              | 12–14 | macOS menu bar, theme, distraction-free, font size                           |
-| 6 — Core gaps           | 15–16 | Find & replace, image paste + asset:// resolution                            |
-| 7 — Hardening & Release | 17–19 | Coverage, packaging, memory audit (Rust-side)                                |
+| Phase                   | Days  | Focus                                                                     |
+| ----------------------- | ----- | ------------------------------------------------------------------------- |
+| 0 — Foundation          | 1–2   | Scaffold, CI (+Cargo cache), test infra                                   |
+| 1 — App Shell           | 3     | document store, AppShell slots, layout, status bar, shortcut handler      |
+| 2 — Core Editor         | 4–6   | EditorContainer + EditorPane (TipTap), extended nodes, source mode toggle |
+| 3 — File System         | 7–9   | Capabilities config, open, new, save, quit dialog, recent files           |
+| 4 — Outline Sidebar     | 10–11 | Heading extraction, navigation, active highlight                          |
+| 5 — Polish              | 12–14 | macOS menu bar, theme, distraction-free, font size                        |
+| 6 — Core gaps           | 15–16 | Find & replace, image paste + asset:// resolution                         |
+| 7 — Hardening & Release | 17–19 | Coverage, packaging, memory audit (Rust-side)                             |
 
 ## CI/CD Pipeline
 

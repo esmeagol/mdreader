@@ -17,15 +17,15 @@ A native macOS markdown editor built with Tauri 2, Svelte 5, and TipTap. Edits r
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|---|---|
-| `Cmd+O` | Open file |
-| `Cmd+S` | Save |
-| `Cmd+Shift+S` | Save as |
-| `Cmd+N` | New file |
-| `Cmd+/` | Toggle source mode |
-| `Cmd+Shift+F` | Toggle distraction-free mode |
-| `Cmd+Shift+L` | Toggle sidebar |
+| Shortcut          | Action                        |
+| ----------------- | ----------------------------- |
+| `Cmd+O`           | Open file                     |
+| `Cmd+S`           | Save                          |
+| `Cmd+Shift+S`     | Save as                       |
+| `Cmd+N`           | New file                      |
+| `Cmd+/`           | Toggle source mode            |
+| `Cmd+Shift+F`     | Toggle distraction-free mode  |
+| `Cmd+Shift+L`     | Toggle sidebar                |
 | `Cmd+=` / `Cmd+-` | Increase / decrease font size |
 
 ## Tech Stack

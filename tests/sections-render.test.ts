@@ -4,7 +4,9 @@ import { test, expect } from '@playwright/test';
 
 const fixturePath = join(process.cwd(), 'tests/fixtures/multi-section.md');
 
-function extractHeadings(md: string): { tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'; text: string }[] {
+function extractHeadings(
+	md: string
+): { tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'; text: string }[] {
 	const out: { tag: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6'; text: string }[] = [];
 	let inFence = false;
 	for (const raw of md.split('\n')) {
@@ -65,5 +67,5 @@ test('multi-section fixture renders body content for each major section', async 
 	await expect(editor.locator('ul li').nth(1)).toContainText('Second bullet');
 
 	await expect(editor.locator('blockquote')).toContainText('A blockquote in gamma.');
-	await expect(editor.locator('pre code')).toContainText("const fenced = true;");
+	await expect(editor.locator('pre code')).toContainText('const fenced = true;');
 });

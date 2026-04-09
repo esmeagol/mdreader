@@ -64,14 +64,14 @@ Props: four named Svelte 5 snippets — `sidebar`, `toolbar`, `editor`, `statusb
 
 ```svelte
 <div
-  class="app-shell"
-  class:sidebar-hidden={!sidebarVisible}
-  class:distraction-free={isDistractionFree}
+	class="app-shell"
+	class:sidebar-hidden={!sidebarVisible}
+	class:distraction-free={isDistractionFree}
 >
-  <aside class="zone-sidebar">{@render sidebar()}</aside>
-  <div  class="zone-toolbar">{@render toolbar()}</div>
-  <main class="zone-editor">{@render editor()}</main>
-  <footer class="zone-status">{@render statusbar()}</footer>
+	<aside class="zone-sidebar">{@render sidebar()}</aside>
+	<div class="zone-toolbar">{@render toolbar()}</div>
+	<main class="zone-editor">{@render editor()}</main>
+	<footer class="zone-status">{@render statusbar()}</footer>
 </div>
 ```
 
@@ -94,22 +94,43 @@ supported JS API and ACL permissions (`core:window:allow-close`, `core:window:al
 
 ```svelte
 <script lang="ts">
-  let sidebarVisible    = $state(true);
-  let isDistractionFree = $state(false);
+	let sidebarVisible = $state(true);
+	let isDistractionFree = $state(false);
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.metaKey && !e.shiftKey) {
-      if (e.key === 'o') { e.preventDefault(); openFile(); }
-      if (e.key === 's') { e.preventDefault(); save(); }
-      if (e.key === 'n') { e.preventDefault(); newFile(); }
-      if (e.key === '/') { e.preventDefault(); toggleSourceMode(); }
-    }
-    if (e.metaKey && e.shiftKey) {
-      if (e.key === 's') { e.preventDefault(); saveAs(); }
-      if (e.key === 'f') { e.preventDefault(); isDistractionFree = !isDistractionFree; }
-      if (e.key === 'l') { e.preventDefault(); sidebarVisible = !sidebarVisible; }
-    }
-  }
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.metaKey && !e.shiftKey) {
+			if (e.key === 'o') {
+				e.preventDefault();
+				openFile();
+			}
+			if (e.key === 's') {
+				e.preventDefault();
+				save();
+			}
+			if (e.key === 'n') {
+				e.preventDefault();
+				newFile();
+			}
+			if (e.key === '/') {
+				e.preventDefault();
+				toggleSourceMode();
+			}
+		}
+		if (e.metaKey && e.shiftKey) {
+			if (e.key === 's') {
+				e.preventDefault();
+				saveAs();
+			}
+			if (e.key === 'f') {
+				e.preventDefault();
+				isDistractionFree = !isDistractionFree;
+			}
+			if (e.key === 'l') {
+				e.preventDefault();
+				sidebarVisible = !sidebarVisible;
+			}
+		}
+	}
 </script>
 
 <svelte:window on:keydown={handleKeydown} />
@@ -134,26 +155,26 @@ not set `isDirty` after a file load or prop-driven sync.
 
 ```svelte
 <script lang="ts">
-  import { document } from '$lib/stores/document';
+	import { document } from '$lib/stores/document';
 
-  let editorMode = $state<'rich' | 'source'>('rich');
-  let content = $state(document.get().content);
+	let editorMode = $state<'rich' | 'source'>('rich');
+	let content = $state(document.get().content);
 
-  function handleChange(md: string) {
-    content = md;
-    if (md === document.get().content) return;
-    document.update(md);
-  }
+	function handleChange(md: string) {
+		content = md;
+		if (md === document.get().content) return;
+		document.update(md);
+	}
 
-  function toggleMode() {
-    editorMode = editorMode === 'rich' ? 'source' : 'rich';
-  }
+	function toggleMode() {
+		editorMode = editorMode === 'rich' ? 'source' : 'rich';
+	}
 </script>
 
 {#if editorMode === 'rich'}
-  <EditorPane {content} onChange={handleChange} />
+	<EditorPane {content} onChange={handleChange} />
 {:else}
-  <SourcePane {content} onChange={handleChange} />
+	<SourcePane {content} onChange={handleChange} />
 {/if}
 ```
 
@@ -205,23 +226,23 @@ through the codebase.
 
 ```svelte
 <script lang="ts">
-  import { document } from '$lib/stores/document';
-  import { formatTitle } from '$lib/utils';
+	import { document } from '$lib/stores/document';
+	import { formatTitle } from '$lib/utils';
 
-  $effect(() => {
-    const { filePath, isDirty } = document.get();
-    window.document.title = formatTitle(filePath, isDirty);
-  });
+	$effect(() => {
+		const { filePath, isDirty } = document.get();
+		window.document.title = formatTitle(filePath, isDirty);
+	});
 
-  $effect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const apply = () => {
-      document.documentElement.dataset.theme = mq.matches ? 'dark' : 'light';
-    };
-    apply();
-    mq.addEventListener('change', apply);
-    return () => mq.removeEventListener('change', apply);
-  });
+	$effect(() => {
+		const mq = window.matchMedia('(prefers-color-scheme: dark)');
+		const apply = () => {
+			document.documentElement.dataset.theme = mq.matches ? 'dark' : 'light';
+		};
+		apply();
+		mq.addEventListener('change', apply);
+		return () => mq.removeEventListener('change', apply);
+	});
 </script>
 ```
 
@@ -238,36 +259,39 @@ to check — not every `store.update()` callsite in the codebase.
 ```typescript
 // src/lib/stores/document.ts
 interface DocumentState {
-  content:   string;
-  filePath:  string | null;
-  isDirty:   boolean;
-  lastSaved: Date | null;
+	content: string;
+	filePath: string | null;
+	isDirty: boolean;
+	lastSaved: Date | null;
 }
 
 export const document = (() => {
-  let state = $state<DocumentState>({
-    content: '', filePath: null, isDirty: false, lastSaved: null
-  });
+	let state = $state<DocumentState>({
+		content: '',
+		filePath: null,
+		isDirty: false,
+		lastSaved: null
+	});
 
-  return {
-    get: () => state,
-    // Called when a file is opened or a new file is created
-    load(content: string, filePath: string | null) {
-      state = { content, filePath, isDirty: false, lastSaved: null };
-    },
-    // Called on every keystroke
-    update(content: string) {
-      state = { ...state, content, isDirty: true };
-    },
-    // Called after a successful save
-    markSaved() {
-      state = { ...state, isDirty: false, lastSaved: new Date() };
-    },
-    // Called by Cmd+N
-    reset() {
-      state = { content: '', filePath: null, isDirty: false, lastSaved: null };
-    }
-  };
+	return {
+		get: () => state,
+		// Called when a file is opened or a new file is created
+		load(content: string, filePath: string | null) {
+			state = { content, filePath, isDirty: false, lastSaved: null };
+		},
+		// Called on every keystroke
+		update(content: string) {
+			state = { ...state, content, isDirty: true };
+		},
+		// Called after a successful save
+		markSaved() {
+			state = { ...state, isDirty: false, lastSaved: new Date() };
+		},
+		// Called by Cmd+N
+		reset() {
+			state = { content: '', filePath: null, isDirty: false, lastSaved: null };
+		}
+	};
 })();
 ```
 
@@ -279,13 +303,13 @@ document state without adding any permanent logging.
 There is no `ui` store. Each piece of UI state lives as close to its owner as possible and
 is only lifted when genuinely shared across distant components.
 
-| State | Owner | Shared via |
-|---|---|---|
-| `sidebarVisible` | `+page.svelte` | Prop to AppShell |
-| `isDistractionFree` | `+page.svelte` | Prop to AppShell |
-| `editorMode` | `EditorContainer` | Internal `$state()` |
-| `theme` | `+layout.svelte` `$effect` | `data-theme` on `<html>` — CSS cascades |
-| `fontSize` | `+page.svelte` handler | CSS variable on `<html>` — CSS cascades |
+| State               | Owner                      | Shared via                              |
+| ------------------- | -------------------------- | --------------------------------------- |
+| `sidebarVisible`    | `+page.svelte`             | Prop to AppShell                        |
+| `isDistractionFree` | `+page.svelte`             | Prop to AppShell                        |
+| `editorMode`        | `EditorContainer`          | Internal `$state()`                     |
+| `theme`             | `+layout.svelte` `$effect` | `data-theme` on `<html>` — CSS cascades |
+| `fontSize`          | `+page.svelte` handler     | CSS variable on `<html>` — CSS cascades |
 
 CSS-cascaded values (theme, font size) do not need a store at all. Components inherit them
 automatically through custom properties.
@@ -303,26 +327,26 @@ import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 
 async function openFile() {
-  const selected = await open({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
-  if (!selected || Array.isArray(selected)) return;
-  const content = await invoke<string>('open_file', { path: selected });
-  document.load(content, selected);
+	const selected = await open({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
+	if (!selected || Array.isArray(selected)) return;
+	const content = await invoke<string>('open_file', { path: selected });
+	document.load(content, selected);
 }
 
 async function save() {
-  const { content, filePath } = document.get();
-  if (!filePath) return saveAs();
-  await invoke('save_file', { path: filePath, content });
-  document.markSaved();
+	const { content, filePath } = document.get();
+	if (!filePath) return saveAs();
+	await invoke('save_file', { path: filePath, content });
+	document.markSaved();
 }
 
 async function saveAs() {
-  const { content } = document.get();
-  const path = await save({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
-  if (!path) return;
-  await invoke('save_file', { path, content });
-  document.load(content, path);
-  document.markSaved();
+	const { content } = document.get();
+	const path = await save({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
+	if (!path) return;
+	await invoke('save_file', { path, content });
+	document.load(content, path);
+	document.markSaved();
 }
 ```
 
@@ -336,12 +360,12 @@ nothing to test separately.
 
 No mocks. Each layer is tested in its natural environment.
 
-| Layer | Tool | What is tested |
-|---|---|---|
-| Pure functions | Vitest | `formatWordCount`, `formatTitle`, heading extraction, markdown round-trips |
-| Rust file I/O | `cargo test` + real tempfiles | `read_markdown_file`, `write_markdown_file`, validation |
-| UI behaviour | Playwright + Vite dev server | Rendering, editing, mode toggle, layout, shortcuts, multi-section fixture (`tests/sections-render.test.ts`) |
-| Tauri `invoke` wiring | Not unit tested — kept thin | Reviewed, tested via manual/integration run |
+| Layer                 | Tool                          | What is tested                                                                                              |
+| --------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Pure functions        | Vitest                        | `formatWordCount`, `formatTitle`, heading extraction, markdown round-trips                                  |
+| Rust file I/O         | `cargo test` + real tempfiles | `read_markdown_file`, `write_markdown_file`, validation                                                     |
+| UI behaviour          | Playwright + Vite dev server  | Rendering, editing, mode toggle, layout, shortcuts, multi-section fixture (`tests/sections-render.test.ts`) |
+| Tauri `invoke` wiring | Not unit tested — kept thin   | Reviewed, tested via manual/integration run                                                                 |
 
 Playwright tests run against the Vite dev server (no Tauri binary). This means `invoke` is
 not available in those tests. The solution is not to mock it — it is to structure tests so
@@ -358,8 +382,16 @@ This means every component inherits theme values automatically without subscribi
 
 ```css
 /* app.css */
-:root              { --color-bg: #ffffff; --color-text: #1a1a1a; --color-border: #e0e0e0; }
-[data-theme="dark"]{ --color-bg: #1e1e1e; --color-text: #d4d4d4; --color-border: #3a3a3a; }
+:root {
+	--color-bg: #ffffff;
+	--color-text: #1a1a1a;
+	--color-border: #e0e0e0;
+}
+[data-theme='dark'] {
+	--color-bg: #1e1e1e;
+	--color-text: #d4d4d4;
+	--color-border: #3a3a3a;
+}
 ```
 
 `+layout.svelte` sets `document.documentElement.dataset.theme` in a single `$effect`.

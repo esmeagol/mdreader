@@ -84,36 +84,39 @@ Create `src/lib/stores/document.ts`:
 
 ```typescript
 interface DocumentState {
-  content:   string;
-  filePath:  string | null;
-  isDirty:   boolean;
-  lastSaved: Date | null;
+	content: string;
+	filePath: string | null;
+	isDirty: boolean;
+	lastSaved: Date | null;
 }
 
 function createDocumentStore() {
-  let state = $state<DocumentState>({
-    content: '', filePath: null, isDirty: false, lastSaved: null
-  });
+	let state = $state<DocumentState>({
+		content: '',
+		filePath: null,
+		isDirty: false,
+		lastSaved: null
+	});
 
-  return {
-    get: () => state,
-    // Called when a file is opened or a new file is created
-    load(content: string, filePath: string | null) {
-      state = { content, filePath, isDirty: false, lastSaved: null };
-    },
-    // Called on every keystroke in the editor
-    update(content: string) {
-      state = { ...state, content, isDirty: true };
-    },
-    // Called after a successful save
-    markSaved() {
-      state = { ...state, isDirty: false, lastSaved: new Date() };
-    },
-    // Called by Cmd+N
-    reset() {
-      state = { content: '', filePath: null, isDirty: false, lastSaved: null };
-    }
-  };
+	return {
+		get: () => state,
+		// Called when a file is opened or a new file is created
+		load(content: string, filePath: string | null) {
+			state = { content, filePath, isDirty: false, lastSaved: null };
+		},
+		// Called on every keystroke in the editor
+		update(content: string) {
+			state = { ...state, content, isDirty: true };
+		},
+		// Called after a successful save
+		markSaved() {
+			state = { ...state, isDirty: false, lastSaved: new Date() };
+		},
+		// Called by Cmd+N
+		reset() {
+			state = { content: '', filePath: null, isDirty: false, lastSaved: null };
+		}
+	};
 }
 
 export const document = createDocumentStore();
@@ -126,34 +129,34 @@ import { describe, it, expect } from 'vitest';
 import { document } from './document';
 
 describe('document store', () => {
-  it('load sets content and clears dirty flag', () => {
-    document.load('# Hello', '/path/to/file.md');
-    expect(document.get().content).toBe('# Hello');
-    expect(document.get().isDirty).toBe(false);
-    expect(document.get().filePath).toBe('/path/to/file.md');
-  });
+	it('load sets content and clears dirty flag', () => {
+		document.load('# Hello', '/path/to/file.md');
+		expect(document.get().content).toBe('# Hello');
+		expect(document.get().isDirty).toBe(false);
+		expect(document.get().filePath).toBe('/path/to/file.md');
+	});
 
-  it('update sets content and marks dirty', () => {
-    document.load('initial', '/file.md');
-    document.update('changed');
-    expect(document.get().content).toBe('changed');
-    expect(document.get().isDirty).toBe(true);
-  });
+	it('update sets content and marks dirty', () => {
+		document.load('initial', '/file.md');
+		document.update('changed');
+		expect(document.get().content).toBe('changed');
+		expect(document.get().isDirty).toBe(true);
+	});
 
-  it('markSaved clears dirty flag', () => {
-    document.update('some content');
-    document.markSaved();
-    expect(document.get().isDirty).toBe(false);
-    expect(document.get().lastSaved).toBeInstanceOf(Date);
-  });
+	it('markSaved clears dirty flag', () => {
+		document.update('some content');
+		document.markSaved();
+		expect(document.get().isDirty).toBe(false);
+		expect(document.get().lastSaved).toBeInstanceOf(Date);
+	});
 
-  it('reset returns to empty state', () => {
-    document.load('# Content', '/file.md');
-    document.reset();
-    expect(document.get().content).toBe('');
-    expect(document.get().filePath).toBeNull();
-    expect(document.get().isDirty).toBe(false);
-  });
+	it('reset returns to empty state', () => {
+		document.load('# Content', '/file.md');
+		document.reset();
+		expect(document.get().content).toBe('');
+		expect(document.get().filePath).toBeNull();
+		expect(document.get().isDirty).toBe(false);
+	});
 });
 ```
 
@@ -183,8 +186,8 @@ Add to `src/lib/utils.ts`:
 
 ```typescript
 export function formatTitle(filePath: string | null, isDirty: boolean): string {
-  const base = filePath ? filePath.split('/').pop()! : 'Untitled';
-  return isDirty ? `• ${base} — mdreader` : `${base} — mdreader`;
+	const base = filePath ? filePath.split('/').pop()! : 'Untitled';
+	return isDirty ? `• ${base} — mdreader` : `${base} — mdreader`;
 }
 ```
 
@@ -194,15 +197,15 @@ Add to `src/lib/utils.test.ts`:
 import { formatTitle } from './utils';
 
 describe('formatTitle', () => {
-  it('shows filename when clean', () => {
-    expect(formatTitle('/docs/notes.md', false)).toBe('notes.md — mdreader');
-  });
-  it('shows bullet when dirty', () => {
-    expect(formatTitle('/docs/notes.md', true)).toBe('• notes.md — mdreader');
-  });
-  it('shows Untitled for new file', () => {
-    expect(formatTitle(null, false)).toBe('Untitled — mdreader');
-  });
+	it('shows filename when clean', () => {
+		expect(formatTitle('/docs/notes.md', false)).toBe('notes.md — mdreader');
+	});
+	it('shows bullet when dirty', () => {
+		expect(formatTitle('/docs/notes.md', true)).toBe('• notes.md — mdreader');
+	});
+	it('shows Untitled for new file', () => {
+		expect(formatTitle(null, false)).toBe('Untitled — mdreader');
+	});
 });
 ```
 
@@ -219,32 +222,32 @@ Create `tests/layout.test.ts`:
 import { test, expect } from '@playwright/test';
 
 test('app has sidebar panel', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.locator('[data-testid="sidebar"]')).toBeVisible();
+	await page.goto('/');
+	await expect(page.locator('[data-testid="sidebar"]')).toBeVisible();
 });
 
 test('app has editor panel', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.locator('[data-testid="editor-area"]')).toBeVisible();
+	await page.goto('/');
+	await expect(page.locator('[data-testid="editor-area"]')).toBeVisible();
 });
 
 test('app has status bar', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.locator('[data-testid="status-bar"]')).toBeVisible();
+	await page.goto('/');
+	await expect(page.locator('[data-testid="status-bar"]')).toBeVisible();
 });
 
 test('sidebar is to the left of editor', async ({ page }) => {
-  await page.goto('/');
-  const sidebar = await page.locator('[data-testid="sidebar"]').boundingBox();
-  const editor  = await page.locator('[data-testid="editor-area"]').boundingBox();
-  expect(sidebar!.x).toBeLessThan(editor!.x);
+	await page.goto('/');
+	const sidebar = await page.locator('[data-testid="sidebar"]').boundingBox();
+	const editor = await page.locator('[data-testid="editor-area"]').boundingBox();
+	expect(sidebar!.x).toBeLessThan(editor!.x);
 });
 
 test('status bar is below editor', async ({ page }) => {
-  await page.goto('/');
-  const editor    = await page.locator('[data-testid="editor-area"]').boundingBox();
-  const statusBar = await page.locator('[data-testid="status-bar"]').boundingBox();
-  expect(editor!.y).toBeLessThan(statusBar!.y);
+	await page.goto('/');
+	const editor = await page.locator('[data-testid="editor-area"]').boundingBox();
+	const statusBar = await page.locator('[data-testid="status-bar"]').boundingBox();
+	expect(editor!.y).toBeLessThan(statusBar!.y);
 });
 ```
 
@@ -260,45 +263,45 @@ in the codebase hardcodes a colour or dimension value.
 
 ```css
 :root {
-  --sidebar-width:      220px;
-  --toolbar-height:     0px;   /* empty slot — set non-zero when toolbar is built */
-  --status-bar-height:  28px;
-  --editor-max-width:   1100px;
-  --font-size-editor:   16px;
+	--sidebar-width: 220px;
+	--toolbar-height: 0px; /* empty slot — set non-zero when toolbar is built */
+	--status-bar-height: 28px;
+	--editor-max-width: 1100px;
+	--font-size-editor: 16px;
 
-  --color-border:       #e0e0e0;
-  --color-bg:           #ffffff;
-  --color-bg-sidebar:   #f5f5f5;
-  --color-bg-status:    #f8f8f8;
-  --color-text:         #1a1a1a;
-  --color-text-muted:   #888888;
-  --color-placeholder:  #bbbbbb;
+	--color-border: #e0e0e0;
+	--color-bg: #ffffff;
+	--color-bg-sidebar: #f5f5f5;
+	--color-bg-status: #f8f8f8;
+	--color-text: #1a1a1a;
+	--color-text-muted: #888888;
+	--color-placeholder: #bbbbbb;
 }
 
-[data-theme="dark"] {
-  --color-border:       #3a3a3a;
-  --color-bg:           #1e1e1e;
-  --color-bg-sidebar:   #252525;
-  --color-bg-status:    #2a2a2a;
-  --color-text:         #d4d4d4;
-  --color-text-muted:   #888888;
-  --color-placeholder:  #555555;
+[data-theme='dark'] {
+	--color-border: #3a3a3a;
+	--color-bg: #1e1e1e;
+	--color-bg-sidebar: #252525;
+	--color-bg-status: #2a2a2a;
+	--color-text: #d4d4d4;
+	--color-text-muted: #888888;
+	--color-placeholder: #555555;
 }
 
 *,
 *::before,
 *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+	box-sizing: border-box;
+	margin: 0;
+	padding: 0;
 }
 
 body {
-  height: 100vh;
-  overflow: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  background: var(--color-bg);
-  color: var(--color-text);
+	height: 100vh;
+	overflow: hidden;
+	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+	background: var(--color-bg);
+	color: var(--color-text);
 }
 ```
 
@@ -307,33 +310,33 @@ document store, and set the theme from the OS preference:
 
 ```svelte
 <script lang="ts">
-  import '../app.css';
-  import favicon from '$lib/assets/favicon.svg';
-  import { document as doc } from '$lib/stores/document';
-  import { formatTitle } from '$lib/utils';
+	import '../app.css';
+	import favicon from '$lib/assets/favicon.svg';
+	import { document as doc } from '$lib/stores/document';
+	import { formatTitle } from '$lib/utils';
 
-  let { children } = $props();
+	let { children } = $props();
 
-  // Drive <title> from document store — never set document.title imperatively elsewhere
-  $effect(() => {
-    const { filePath, isDirty } = doc.get();
-    window.document.title = formatTitle(filePath, isDirty);
-  });
+	// Drive <title> from document store — never set document.title imperatively elsewhere
+	$effect(() => {
+		const { filePath, isDirty } = doc.get();
+		window.document.title = formatTitle(filePath, isDirty);
+	});
 
-  // Set data-theme from OS preference — CSS cascade handles the rest
-  $effect(() => {
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const apply = () => {
-      window.document.documentElement.dataset.theme = mq.matches ? 'dark' : 'light';
-    };
-    apply();
-    mq.addEventListener('change', apply);
-    return () => mq.removeEventListener('change', apply);
-  });
+	// Set data-theme from OS preference — CSS cascade handles the rest
+	$effect(() => {
+		const mq = window.matchMedia('(prefers-color-scheme: dark)');
+		const apply = () => {
+			window.document.documentElement.dataset.theme = mq.matches ? 'dark' : 'light';
+		};
+		apply();
+		mq.addEventListener('change', apply);
+		return () => mq.removeEventListener('change', apply);
+	});
 </script>
 
 <svelte:head>
-  <link rel="icon" href={favicon} />
+	<link rel="icon" href={favicon} />
 </svelte:head>
 
 {@render children()}
@@ -345,53 +348,83 @@ Create `src/lib/components/AppShell.svelte`. This component owns the grid and no
 
 ```svelte
 <script lang="ts">
-  interface Props {
-    sidebar:          import('svelte').Snippet;
-    toolbar:          import('svelte').Snippet;
-    editor:           import('svelte').Snippet;
-    statusbar:        import('svelte').Snippet;
-    sidebarVisible:   boolean;
-    isDistractionFree: boolean;
-  }
+	interface Props {
+		sidebar: import('svelte').Snippet;
+		toolbar: import('svelte').Snippet;
+		editor: import('svelte').Snippet;
+		statusbar: import('svelte').Snippet;
+		sidebarVisible: boolean;
+		isDistractionFree: boolean;
+	}
 
-  let { sidebar, toolbar, editor, statusbar, sidebarVisible, isDistractionFree }: Props = $props();
+	let { sidebar, toolbar, editor, statusbar, sidebarVisible, isDistractionFree }: Props = $props();
 </script>
 
 <div
-  class="app-shell"
-  class:sidebar-hidden={!sidebarVisible}
-  class:distraction-free={isDistractionFree}
+	class="app-shell"
+	class:sidebar-hidden={!sidebarVisible}
+	class:distraction-free={isDistractionFree}
 >
-  <aside class="zone-sidebar">{@render sidebar()}</aside>
-  <div   class="zone-toolbar">{@render toolbar()}</div>
-  <main  class="zone-editor">{@render editor()}</main>
-  <footer class="zone-status">{@render statusbar()}</footer>
+	<aside class="zone-sidebar">{@render sidebar()}</aside>
+	<div class="zone-toolbar">{@render toolbar()}</div>
+	<main class="zone-editor">{@render editor()}</main>
+	<footer class="zone-status">{@render statusbar()}</footer>
 </div>
 
 <style>
-  .app-shell {
-    display: grid;
-    grid-template-columns: var(--sidebar-width) 1fr;
-    grid-template-rows: var(--toolbar-height) 1fr var(--status-bar-height);
-    grid-template-areas:
-      'sidebar toolbar'
-      'sidebar editor'
-      'status  status';
-    height: 100vh;
-  }
+	.app-shell {
+		display: grid;
+		grid-template-columns: var(--sidebar-width) 1fr;
+		grid-template-rows: var(--toolbar-height) 1fr var(--status-bar-height);
+		grid-template-areas:
+			'sidebar toolbar'
+			'sidebar editor'
+			'status  status';
+		height: 100vh;
+	}
 
-  .zone-sidebar  { grid-area: sidebar; border-right: 1px solid var(--color-border); background: var(--color-bg-sidebar); overflow-y: auto; }
-  .zone-toolbar  { grid-area: toolbar; border-bottom: 1px solid var(--color-border); overflow: hidden; }
-  .zone-editor   { grid-area: editor;  overflow-y: auto; }
-  .zone-status   { grid-area: status;  display: flex; align-items: center; padding: 0 12px; font-size: 11px; border-top: 1px solid var(--color-border); background: var(--color-bg-status); color: var(--color-text-muted); }
+	.zone-sidebar {
+		grid-area: sidebar;
+		border-right: 1px solid var(--color-border);
+		background: var(--color-bg-sidebar);
+		overflow-y: auto;
+	}
+	.zone-toolbar {
+		grid-area: toolbar;
+		border-bottom: 1px solid var(--color-border);
+		overflow: hidden;
+	}
+	.zone-editor {
+		grid-area: editor;
+		overflow-y: auto;
+	}
+	.zone-status {
+		grid-area: status;
+		display: flex;
+		align-items: center;
+		padding: 0 12px;
+		font-size: 11px;
+		border-top: 1px solid var(--color-border);
+		background: var(--color-bg-status);
+		color: var(--color-text-muted);
+	}
 
-  /* Distraction-free: hide sidebar and status bar */
-  .distraction-free { grid-template-columns: 0 1fr; }
-  .distraction-free .zone-status { display: none; }
+	/* Distraction-free: hide sidebar and status bar */
+	.distraction-free {
+		grid-template-columns: 0 1fr;
+	}
+	.distraction-free .zone-status {
+		display: none;
+	}
 
-  /* Collapsed sidebar */
-  .sidebar-hidden { grid-template-columns: 0 1fr; }
-  .sidebar-hidden .zone-sidebar { overflow: hidden; border-right: none; }
+	/* Collapsed sidebar */
+	.sidebar-hidden {
+		grid-template-columns: 0 1fr;
+	}
+	.sidebar-hidden .zone-sidebar {
+		overflow: hidden;
+		border-right: none;
+	}
 </style>
 ```
 
@@ -400,31 +433,40 @@ Create `src/lib/components/AppShell.svelte`. This component owns the grid and no
 Create placeholder components for zones not yet implemented.
 
 `src/lib/components/Sidebar.svelte`:
+
 ```svelte
 <div data-testid="sidebar" class="sidebar">
-  <p class="placeholder">Outline</p>
+	<p class="placeholder">Outline</p>
 </div>
 
 <style>
-  .sidebar { padding: 12px 8px; height: 100%; }
-  .placeholder { font-size: 12px; color: var(--color-placeholder); }
+	.sidebar {
+		padding: 12px 8px;
+		height: 100%;
+	}
+	.placeholder {
+		font-size: 12px;
+		color: var(--color-placeholder);
+	}
 </style>
 ```
 
 `src/lib/components/Toolbar.svelte`:
+
 ```svelte
 <div class="toolbar"><!-- Formatting toolbar — Day 12 --></div>
 ```
 
 `src/lib/components/StatusBar.svelte`:
+
 ```svelte
 <script lang="ts">
-  import { document as doc } from '$lib/stores/document';
-  import { formatWordCount } from '$lib/utils';
+	import { document as doc } from '$lib/stores/document';
+	import { formatWordCount } from '$lib/utils';
 </script>
 
 <footer data-testid="status-bar" class="status-bar">
-  <span>{formatWordCount(doc.get().content)}</span>
+	<span>{formatWordCount(doc.get().content)}</span>
 </footer>
 ```
 
@@ -435,68 +477,98 @@ It is the only file that wires AppShell slots together.
 
 ```svelte
 <script lang="ts">
-  import AppShell   from '$lib/components/AppShell.svelte';
-  import Sidebar    from '$lib/components/Sidebar.svelte';
-  import Toolbar    from '$lib/components/Toolbar.svelte';
-  import StatusBar  from '$lib/components/StatusBar.svelte';
+	import AppShell from '$lib/components/AppShell.svelte';
+	import Sidebar from '$lib/components/Sidebar.svelte';
+	import Toolbar from '$lib/components/Toolbar.svelte';
+	import StatusBar from '$lib/components/StatusBar.svelte';
 
-  // App-level UI state — flows down as props, never in a store
-  let sidebarVisible    = $state(true);
-  let isDistractionFree = $state(false);
-  let editorMode        = $state<'rich' | 'source'>('rich');
-  let fontSize          = $state(16);
+	// App-level UI state — flows down as props, never in a store
+	let sidebarVisible = $state(true);
+	let isDistractionFree = $state(false);
+	let editorMode = $state<'rich' | 'source'>('rich');
+	let fontSize = $state(16);
 
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.metaKey && !e.shiftKey) {
-      if (e.key === 'o') { e.preventDefault(); openFile(); }
-      if (e.key === 's') { e.preventDefault(); save(); }
-      if (e.key === 'n') { e.preventDefault(); newFile(); }
-      if (e.key === '/') { e.preventDefault(); editorMode = editorMode === 'rich' ? 'source' : 'rich'; }
-      if (e.key === '=') { e.preventDefault(); setFontSize(fontSize + 1); }
-      if (e.key === '-') { e.preventDefault(); setFontSize(fontSize - 1); }
-    }
-    if (e.metaKey && e.shiftKey) {
-      if (e.key === 'S') { e.preventDefault(); saveAs(); }
-      if (e.key === 'F') { e.preventDefault(); isDistractionFree = !isDistractionFree; }
-      if (e.key === 'L') { e.preventDefault(); sidebarVisible = !sidebarVisible; }
-    }
-  }
+	function handleKeydown(e: KeyboardEvent) {
+		if (e.metaKey && !e.shiftKey) {
+			if (e.key === 'o') {
+				e.preventDefault();
+				openFile();
+			}
+			if (e.key === 's') {
+				e.preventDefault();
+				save();
+			}
+			if (e.key === 'n') {
+				e.preventDefault();
+				newFile();
+			}
+			if (e.key === '/') {
+				e.preventDefault();
+				editorMode = editorMode === 'rich' ? 'source' : 'rich';
+			}
+			if (e.key === '=') {
+				e.preventDefault();
+				setFontSize(fontSize + 1);
+			}
+			if (e.key === '-') {
+				e.preventDefault();
+				setFontSize(fontSize - 1);
+			}
+		}
+		if (e.metaKey && e.shiftKey) {
+			if (e.key === 'S') {
+				e.preventDefault();
+				saveAs();
+			}
+			if (e.key === 'F') {
+				e.preventDefault();
+				isDistractionFree = !isDistractionFree;
+			}
+			if (e.key === 'L') {
+				e.preventDefault();
+				sidebarVisible = !sidebarVisible;
+			}
+		}
+	}
 
-  function setFontSize(size: number) {
-    fontSize = Math.max(10, Math.min(32, size));
-    document.documentElement.style.setProperty('--font-size-editor', `${fontSize}px`);
-  }
+	function setFontSize(size: number) {
+		fontSize = Math.max(10, Math.min(32, size));
+		document.documentElement.style.setProperty('--font-size-editor', `${fontSize}px`);
+	}
 
-  // openFile, save, saveAs, newFile — implemented in Day 7
-  async function openFile() {}
-  async function save() {}
-  async function saveAs() {}
-  function newFile() {}
+	// openFile, save, saveAs, newFile — implemented in Day 7
+	async function openFile() {}
+	async function save() {}
+	async function saveAs() {}
+	function newFile() {}
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
 <AppShell {sidebarVisible} {isDistractionFree}>
-  {#snippet sidebar()}<Sidebar />{/snippet}
-  {#snippet toolbar()}<Toolbar />{/snippet}
-  {#snippet editor()}
-    <div data-testid="editor-area" class="editor-area">
-      <!-- EditorContainer goes here — Day 4 -->
-      <p class="placeholder">Editor</p>
-    </div>
-  {/snippet}
-  {#snippet statusbar()}<StatusBar />{/snippet}
+	{#snippet sidebar()}<Sidebar />{/snippet}
+	{#snippet toolbar()}<Toolbar />{/snippet}
+	{#snippet editor()}
+		<div data-testid="editor-area" class="editor-area">
+			<!-- EditorContainer goes here — Day 4 -->
+			<p class="placeholder">Editor</p>
+		</div>
+	{/snippet}
+	{#snippet statusbar()}<StatusBar />{/snippet}
 </AppShell>
 
 <style>
-  .editor-area {
-    padding: clamp(16px, 3vw, 32px);
-    max-width: var(--editor-max-width);
-    margin: 0 auto;
-    width: 100%;
-    min-height: 100%;
-  }
-  .placeholder { font-size: 12px; color: var(--color-placeholder); }
+	.editor-area {
+		padding: clamp(16px, 3vw, 32px);
+		max-width: var(--editor-max-width);
+		margin: 0 auto;
+		width: 100%;
+		min-height: 100%;
+	}
+	.placeholder {
+		font-size: 12px;
+		color: var(--color-placeholder);
+	}
 </style>
 ```
 
@@ -551,28 +623,28 @@ import StarterKit from '@tiptap/starter-kit';
 import { Markdown } from 'tiptap-markdown';
 
 function createEditor(content = '') {
-  return new Editor({ extensions: [StarterKit, Markdown], content });
+	return new Editor({ extensions: [StarterKit, Markdown], content });
 }
 
 describe('markdown round-trip', () => {
-  const cases: [string, string][] = [
-    ['heading 1',    '# Hello World'],
-    ['heading 2',    '## Section'],
-    ['heading 3',    '### Subsection'],
-    ['bold',         'This is **bold** text.'],
-    ['italic',       'This is *italic* text.'],
-    ['inline code',  'Use `console.log()` here.'],
-    ['paragraph',    'Just a plain paragraph.'],
-  ];
+	const cases: [string, string][] = [
+		['heading 1', '# Hello World'],
+		['heading 2', '## Section'],
+		['heading 3', '### Subsection'],
+		['bold', 'This is **bold** text.'],
+		['italic', 'This is *italic* text.'],
+		['inline code', 'Use `console.log()` here.'],
+		['paragraph', 'Just a plain paragraph.']
+	];
 
-  for (const [name, markdown] of cases) {
-    it(`round-trips ${name}`, () => {
-      const editor = createEditor(markdown);
-      const result = editor.storage.markdown.getMarkdown().trim();
-      editor.destroy();
-      expect(result).toBe(markdown.trim());
-    });
-  }
+	for (const [name, markdown] of cases) {
+		it(`round-trips ${name}`, () => {
+			const editor = createEditor(markdown);
+			const result = editor.storage.markdown.getMarkdown().trim();
+			editor.destroy();
+			expect(result).toBe(markdown.trim());
+		});
+	}
 });
 ```
 
@@ -590,39 +662,39 @@ Create `tests/editor.test.ts`:
 import { test, expect } from '@playwright/test';
 
 test('editor is visible and focusable', async ({ page }) => {
-  await page.goto('/');
-  const editor = page.locator('[data-testid="editor-area"] .tiptap');
-  await expect(editor).toBeVisible();
-  await editor.click();
-  await expect(editor).toBeFocused();
+	await page.goto('/');
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await expect(editor).toBeVisible();
+	await editor.click();
+	await expect(editor).toBeFocused();
 });
 
 test('heading markdown renders as h1 element', async ({ page }) => {
-  await page.goto('/');
-  const editor = page.locator('[data-testid="editor-area"] .tiptap');
-  await editor.click();
-  await page.keyboard.type('# My Heading');
-  await page.keyboard.press('Enter');
-  await expect(editor.locator('h1')).toContainText('My Heading');
+	await page.goto('/');
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await editor.click();
+	await page.keyboard.type('# My Heading');
+	await page.keyboard.press('Enter');
+	await expect(editor.locator('h1')).toContainText('My Heading');
 });
 
 test('bold markdown renders as strong element', async ({ page }) => {
-  await page.goto('/');
-  const editor = page.locator('[data-testid="editor-area"] .tiptap');
-  await editor.click();
-  await page.keyboard.type('**bold text**');
-  await page.keyboard.press(' ');
-  await expect(editor.locator('strong')).toContainText('bold text');
+	await page.goto('/');
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await editor.click();
+	await page.keyboard.type('**bold text**');
+	await page.keyboard.press(' ');
+	await expect(editor.locator('strong')).toContainText('bold text');
 });
 
 test('typing updates word count in status bar', async ({ page }) => {
-  await page.goto('/');
-  const editor = page.locator('[data-testid="editor-area"] .tiptap');
-  await editor.click();
-  await page.keyboard.press('Meta+a');
-  await page.keyboard.press('Backspace');
-  await page.keyboard.type('hello world foo');
-  await expect(page.locator('[data-testid="status-bar"]')).toContainText('3 words');
+	await page.goto('/');
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await editor.click();
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Backspace');
+	await page.keyboard.type('hello world foo');
+	await expect(page.locator('[data-testid="status-bar"]')).toContainText('3 words');
 });
 ```
 
@@ -640,82 +712,102 @@ Create `src/lib/components/EditorPane.svelte`:
 
 ```svelte
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { Editor } from '@tiptap/core';
-  import StarterKit from '@tiptap/starter-kit';
-  import { Markdown } from 'tiptap-markdown';
+	import { onMount, onDestroy } from 'svelte';
+	import { Editor } from '@tiptap/core';
+	import StarterKit from '@tiptap/starter-kit';
+	import { Markdown } from 'tiptap-markdown';
 
-  interface Props {
-    content:  string;
-    onChange: (md: string) => void;
-    theme:    'light' | 'dark';
-  }
+	interface Props {
+		content: string;
+		onChange: (md: string) => void;
+		theme: 'light' | 'dark';
+	}
 
-  let { content, onChange, theme }: Props = $props();
+	let { content, onChange, theme }: Props = $props();
 
-  let editorEl: HTMLElement;
-  let editor: Editor;
+	let editorEl: HTMLElement;
+	let editor: Editor;
 
-  onMount(() => {
-    editor = new Editor({
-      element: editorEl,
-      extensions: [StarterKit, Markdown],
-      content,
-      editorProps: { attributes: { class: 'tiptap' } },
-      onUpdate: ({ editor }) => {
-        onChange(editor.storage.markdown.getMarkdown());
-      }
-    });
+	onMount(() => {
+		editor = new Editor({
+			element: editorEl,
+			extensions: [StarterKit, Markdown],
+			content,
+			editorProps: { attributes: { class: 'tiptap' } },
+			onUpdate: ({ editor }) => {
+				onChange(editor.storage.markdown.getMarkdown());
+			}
+		});
 
-    // Intercept link clicks — open in system browser, not in the app window
-    editorEl.addEventListener('click', async (e) => {
-      const anchor = (e.target as HTMLElement).closest('a');
-      if (!anchor) return;
-      const href = anchor.getAttribute('href');
-      if (!href) return;
-      e.preventDefault();
-      if (href.startsWith('http://') || href.startsWith('https://')) {
-        const { open } = await import('@tauri-apps/plugin-shell');
-        open(href);
-      }
-    });
-  });
+		// Intercept link clicks — open in system browser, not in the app window
+		editorEl.addEventListener('click', async (e) => {
+			const anchor = (e.target as HTMLElement).closest('a');
+			if (!anchor) return;
+			const href = anchor.getAttribute('href');
+			if (!href) return;
+			e.preventDefault();
+			if (href.startsWith('http://') || href.startsWith('https://')) {
+				const { open } = await import('@tauri-apps/plugin-shell');
+				open(href);
+			}
+		});
+	});
 
-  // Sync content prop → editor when it changes externally (e.g. file open)
-  $effect(() => {
-    if (editor && content !== editor.storage.markdown.getMarkdown()) {
-      editor.commands.setContent(content);
-    }
-  });
+	// Sync content prop → editor when it changes externally (e.g. file open)
+	$effect(() => {
+		if (editor && content !== editor.storage.markdown.getMarkdown()) {
+			editor.commands.setContent(content);
+		}
+	});
 
-  onDestroy(() => editor?.destroy());
+	onDestroy(() => editor?.destroy());
 </script>
 
 <div bind:this={editorEl} class="editor-mount"></div>
 
 <style>
-  .editor-mount { height: 100%; }
+	.editor-mount {
+		height: 100%;
+	}
 
-  :global(.tiptap) {
-    outline: none;
-    min-height: 100%;
-    font-size: var(--font-size-editor);
-    line-height: 1.7;
-    color: var(--color-text);
-  }
-  :global(.tiptap h1) { font-size: 2em;    font-weight: 700; margin: 0.5em 0; }
-  :global(.tiptap h2) { font-size: 1.5em;  font-weight: 600; margin: 0.5em 0; }
-  :global(.tiptap h3) { font-size: 1.25em; font-weight: 600; margin: 0.5em 0; }
-  :global(.tiptap p)  { margin: 0.5em 0; }
-  :global(.tiptap strong) { font-weight: 700; }
-  :global(.tiptap em)     { font-style: italic; }
-  :global(.tiptap code) {
-    font-family: 'Menlo', monospace;
-    background: rgba(0,0,0,0.06);
-    padding: 0.1em 0.3em;
-    border-radius: 3px;
-    font-size: 0.9em;
-  }
+	:global(.tiptap) {
+		outline: none;
+		min-height: 100%;
+		font-size: var(--font-size-editor);
+		line-height: 1.7;
+		color: var(--color-text);
+	}
+	:global(.tiptap h1) {
+		font-size: 2em;
+		font-weight: 700;
+		margin: 0.5em 0;
+	}
+	:global(.tiptap h2) {
+		font-size: 1.5em;
+		font-weight: 600;
+		margin: 0.5em 0;
+	}
+	:global(.tiptap h3) {
+		font-size: 1.25em;
+		font-weight: 600;
+		margin: 0.5em 0;
+	}
+	:global(.tiptap p) {
+		margin: 0.5em 0;
+	}
+	:global(.tiptap strong) {
+		font-weight: 700;
+	}
+	:global(.tiptap em) {
+		font-style: italic;
+	}
+	:global(.tiptap code) {
+		font-family: 'Menlo', monospace;
+		background: rgba(0, 0, 0, 0.06);
+		padding: 0.1em 0.3em;
+		border-radius: 3px;
+		font-size: 0.9em;
+	}
 </style>
 ```
 
@@ -729,33 +821,33 @@ Create `src/lib/components/EditorContainer.svelte`:
 
 ```svelte
 <script lang="ts">
-  import { document as doc } from '$lib/stores/document';
-  import EditorPane from './EditorPane.svelte';
+	import { document as doc } from '$lib/stores/document';
+	import EditorPane from './EditorPane.svelte';
 
-  interface Props {
-    editorMode: 'rich' | 'source';
-    theme:      'light' | 'dark';
-  }
+	interface Props {
+		editorMode: 'rich' | 'source';
+		theme: 'light' | 'dark';
+	}
 
-  let { editorMode, theme }: Props = $props();
+	let { editorMode, theme }: Props = $props();
 
-  // Content is derived from the document store — EditorContainer is the bridge
-  let content = $state(doc.get().content);
+	// Content is derived from the document store — EditorContainer is the bridge
+	let content = $state(doc.get().content);
 
-  function handleChange(md: string) {
-    content = md;
-    doc.update(md);
-  }
+	function handleChange(md: string) {
+		content = md;
+		doc.update(md);
+	}
 
-  // Sync inbound store changes (e.g. file open) into local content
-  $effect(() => {
-    const storeContent = doc.get().content;
-    if (storeContent !== content) content = storeContent;
-  });
+	// Sync inbound store changes (e.g. file open) into local content
+	$effect(() => {
+		const storeContent = doc.get().content;
+		if (storeContent !== content) content = storeContent;
+	});
 </script>
 
 {#if editorMode === 'rich'}
-  <EditorPane {content} onChange={handleChange} {theme} />
+	<EditorPane {content} onChange={handleChange} {theme} />
 {/if}
 <!-- SourcePane added Day 6 -->
 ```
@@ -766,21 +858,22 @@ Replace the editor placeholder in `+page.svelte`:
 
 ```svelte
 <script lang="ts">
-  // ... existing imports and state ...
-  import EditorContainer from '$lib/components/EditorContainer.svelte';
+	// ... existing imports and state ...
+	import EditorContainer from '$lib/components/EditorContainer.svelte';
 
-  // Derive theme from data-theme on <html> for passing to editor components
-  let theme = $derived(
-    typeof window !== 'undefined' &&
-    window.document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
-  );
+	// Derive theme from data-theme on <html> for passing to editor components
+	let theme = $derived(
+		typeof window !== 'undefined' && window.document.documentElement.dataset.theme === 'dark'
+			? 'dark'
+			: 'light'
+	);
 </script>
 
 <!-- In the editor snippet: -->
 {#snippet editor()}
-  <div data-testid="editor-area" class="editor-area">
-    <EditorContainer {editorMode} {theme} />
-  </div>
+	<div data-testid="editor-area" class="editor-area">
+		<EditorContainer {editorMode} {theme} />
+	</div>
 {/snippet}
 ```
 
@@ -791,11 +884,13 @@ npm install @tauri-apps/plugin-shell
 ```
 
 Add to `src-tauri/Cargo.toml`:
+
 ```toml
 tauri-plugin-shell = "2"
 ```
 
 Register in `src-tauri/src/lib.rs`:
+
 ```rust
 .plugin(tauri_plugin_shell::init())
 ```
@@ -841,7 +936,7 @@ npm install @tiptap/extension-code-block-lowlight \
 
 Add to `src/lib/markdown.test.ts`:
 
-```typescript
+````typescript
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Strike from '@tiptap/extension-strike';
@@ -855,73 +950,73 @@ import { common, createLowlight } from 'lowlight';
 const lowlight = createLowlight(common);
 
 function createExtendedEditor(content = '') {
-  return new Editor({
-    extensions: [
-      StarterKit.configure({ codeBlock: false }),
-      Markdown,
-      TaskList,
-      TaskItem,
-      Strike,
-      CodeBlockLowlight.configure({ lowlight }),
-      Table.configure({ resizable: false }),
-      TableRow,
-      TableHeader,
-      TableCell
-    ],
-    content
-  });
+	return new Editor({
+		extensions: [
+			StarterKit.configure({ codeBlock: false }),
+			Markdown,
+			TaskList,
+			TaskItem,
+			Strike,
+			CodeBlockLowlight.configure({ lowlight }),
+			Table.configure({ resizable: false }),
+			TableRow,
+			TableHeader,
+			TableCell
+		],
+		content
+	});
 }
 
 describe('extended markdown round-trip', () => {
-  it('round-trips strikethrough', () => {
-    const md = 'This is ~~struck~~ text.';
-    const editor = createExtendedEditor(md);
-    const result = editor.storage.markdown.getMarkdown().trim();
-    editor.destroy();
-    expect(result).toBe(md);
-  });
+	it('round-trips strikethrough', () => {
+		const md = 'This is ~~struck~~ text.';
+		const editor = createExtendedEditor(md);
+		const result = editor.storage.markdown.getMarkdown().trim();
+		editor.destroy();
+		expect(result).toBe(md);
+	});
 
-  it('round-trips a fenced code block', () => {
-    const md = '```javascript\nconsole.log("hello");\n```';
-    const editor = createExtendedEditor(md);
-    const result = editor.storage.markdown.getMarkdown().trim();
-    editor.destroy();
-    expect(result).toBe(md);
-  });
+	it('round-trips a fenced code block', () => {
+		const md = '```javascript\nconsole.log("hello");\n```';
+		const editor = createExtendedEditor(md);
+		const result = editor.storage.markdown.getMarkdown().trim();
+		editor.destroy();
+		expect(result).toBe(md);
+	});
 
-  it('round-trips an unchecked task list item', () => {
-    const md = '- [ ] Unchecked task';
-    const editor = createExtendedEditor(md);
-    const result = editor.storage.markdown.getMarkdown().trim();
-    editor.destroy();
-    expect(result).toBe(md);
-  });
+	it('round-trips an unchecked task list item', () => {
+		const md = '- [ ] Unchecked task';
+		const editor = createExtendedEditor(md);
+		const result = editor.storage.markdown.getMarkdown().trim();
+		editor.destroy();
+		expect(result).toBe(md);
+	});
 
-  it('round-trips a checked task list item', () => {
-    const md = '- [x] Checked task';
-    const editor = createExtendedEditor(md);
-    const result = editor.storage.markdown.getMarkdown().trim();
-    editor.destroy();
-    expect(result).toBe(md);
-  });
+	it('round-trips a checked task list item', () => {
+		const md = '- [x] Checked task';
+		const editor = createExtendedEditor(md);
+		const result = editor.storage.markdown.getMarkdown().trim();
+		editor.destroy();
+		expect(result).toBe(md);
+	});
 
-  it('round-trips a basic markdown table', () => {
-    const md = '| Name | Role |\n| --- | --- |\n| Alice | Engineer |';
-    const editor = createExtendedEditor(md);
-    const result = editor.storage.markdown.getMarkdown().trim();
-    editor.destroy();
-    expect(result).toBe(md);
-  });
+	it('round-trips a basic markdown table', () => {
+		const md = '| Name | Role |\n| --- | --- |\n| Alice | Engineer |';
+		const editor = createExtendedEditor(md);
+		const result = editor.storage.markdown.getMarkdown().trim();
+		editor.destroy();
+		expect(result).toBe(md);
+	});
 
-  it('round-trips a markdown table with inline formatting', () => {
-    const md = '| Name | Notes |\n| --- | --- |\n| Alice | **Strong** and *italic* |';
-    const editor = createExtendedEditor(md);
-    const result = editor.storage.markdown.getMarkdown().trim();
-    editor.destroy();
-    expect(result).toBe(md);
-  });
+	it('round-trips a markdown table with inline formatting', () => {
+		const md = '| Name | Notes |\n| --- | --- |\n| Alice | **Strong** and *italic* |';
+		const editor = createExtendedEditor(md);
+		const result = editor.storage.markdown.getMarkdown().trim();
+		editor.destroy();
+		expect(result).toBe(md);
+	});
 });
-```
+````
 
 ```bash
 npm run test:unit
@@ -932,51 +1027,54 @@ npm run test:unit
 
 Add to `tests/editor.test.ts`:
 
-```typescript
+````typescript
 test('code block renders as pre/code element', async ({ page }) => {
-  await page.goto('/');
-  const editor = page.locator('[data-testid="editor-area"] .tiptap');
-  await editor.click();
-  await page.keyboard.type('```javascript');
-  await page.keyboard.press('Enter');
-  await page.keyboard.type('const x = 1;');
-  await expect(editor.locator('pre code')).toContainText('const x = 1;');
+	await page.goto('/');
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await editor.click();
+	await page.keyboard.type('```javascript');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('const x = 1;');
+	await expect(editor.locator('pre code')).toContainText('const x = 1;');
 });
 
 test('strikethrough renders as s element', async ({ page }) => {
-  await page.goto('/');
-  const editor = page.locator('[data-testid="editor-area"] .tiptap');
-  await editor.click();
-  await page.keyboard.type('~~struck~~');
-  await page.keyboard.press(' ');
-  await expect(editor.locator('s')).toContainText('struck');
+	await page.goto('/');
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await editor.click();
+	await page.keyboard.type('~~struck~~');
+	await page.keyboard.press(' ');
+	await expect(editor.locator('s')).toContainText('struck');
 });
 
 test('markdown table renders as table in rich mode', async ({ page }) => {
-  await page.goto('/');
-  await page.evaluate(async () => {
-    // @ts-expect-error Vite browser runtime import path
-    const { document } = await import('/src/lib/stores/document.ts');
-    document.load('| Name | Role |\n| --- | --- |\n| Alice | Engineer |', '/tmp/table.md');
-  });
-  const editor = page.locator('[data-testid="editor-area"] .tiptap');
-  await expect(editor.locator('table')).toBeVisible();
-  await expect(editor.locator('th')).toContainText(['Name', 'Role']);
-  await expect(editor.locator('td')).toContainText(['Alice', 'Engineer']);
+	await page.goto('/');
+	await page.evaluate(async () => {
+		// @ts-expect-error Vite browser runtime import path
+		const { document } = await import('/src/lib/stores/document.ts');
+		document.load('| Name | Role |\n| --- | --- |\n| Alice | Engineer |', '/tmp/table.md');
+	});
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await expect(editor.locator('table')).toBeVisible();
+	await expect(editor.locator('th')).toContainText(['Name', 'Role']);
+	await expect(editor.locator('td')).toContainText(['Alice', 'Engineer']);
 });
 
 test('table cells preserve inline markdown formatting', async ({ page }) => {
-  await page.goto('/');
-  await page.evaluate(async () => {
-    // @ts-expect-error Vite browser runtime import path
-    const { document } = await import('/src/lib/stores/document.ts');
-    document.load('| Name | Notes |\n| --- | --- |\n| Alice | **Strong** and *italic* |', '/tmp/table-format.md');
-  });
-  const editor = page.locator('[data-testid="editor-area"] .tiptap');
-  await expect(editor.locator('table strong')).toContainText('Strong');
-  await expect(editor.locator('table em')).toContainText('italic');
+	await page.goto('/');
+	await page.evaluate(async () => {
+		// @ts-expect-error Vite browser runtime import path
+		const { document } = await import('/src/lib/stores/document.ts');
+		document.load(
+			'| Name | Notes |\n| --- | --- |\n| Alice | **Strong** and *italic* |',
+			'/tmp/table-format.md'
+		);
+	});
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await expect(editor.locator('table strong')).toContainText('Strong');
+	await expect(editor.locator('table em')).toContainText('italic');
 });
-```
+````
 
 ```bash
 npx playwright test tests/editor.test.ts
@@ -1002,20 +1100,20 @@ const lowlight = createLowlight(common);
 
 // In onMount:
 editor = new Editor({
-  element: editorEl,
-  extensions: [
-    StarterKit.configure({ codeBlock: false }),
-    Markdown,
-    TaskList,
-    TaskItem.configure({ nested: true }),
-    Strike,
-    CodeBlockLowlight.configure({ lowlight }),
-    Table.configure({ resizable: false }),
-    TableRow,
-    TableHeader,
-    TableCell
-  ],
-  // ...
+	element: editorEl,
+	extensions: [
+		StarterKit.configure({ codeBlock: false }),
+		Markdown,
+		TaskList,
+		TaskItem.configure({ nested: true }),
+		Strike,
+		CodeBlockLowlight.configure({ lowlight }),
+		Table.configure({ resizable: false }),
+		TableRow,
+		TableHeader,
+		TableCell
+	]
+	// ...
 });
 ```
 
@@ -1023,15 +1121,20 @@ Add styles to `EditorPane.svelte`:
 
 ```css
 :global(.tiptap pre) {
-  background: var(--color-bg-sidebar);
-  border-radius: 6px;
-  padding: 1em;
-  overflow-x: auto;
-  font-family: 'Menlo', monospace;
-  font-size: 0.875em;
+	background: var(--color-bg-sidebar);
+	border-radius: 6px;
+	padding: 1em;
+	overflow-x: auto;
+	font-family: 'Menlo', monospace;
+	font-size: 0.875em;
 }
-:global(.tiptap input[type='checkbox']) { margin-right: 6px; }
-:global(.tiptap s) { text-decoration: line-through; opacity: 0.6; }
+:global(.tiptap input[type='checkbox']) {
+	margin-right: 6px;
+}
+:global(.tiptap s) {
+	text-decoration: line-through;
+	opacity: 0.6;
+}
 ```
 
 ```bash
@@ -1069,75 +1172,75 @@ Create `tests/source-mode.test.ts`:
 import { test, expect } from '@playwright/test';
 
 test('Cmd+/ toggles to source mode showing raw markdown', async ({ page }) => {
-  await page.goto('/');
-  const editorArea = page.locator('[data-testid="editor-area"]');
+	await page.goto('/');
+	const editorArea = page.locator('[data-testid="editor-area"]');
 
-  // Type a heading in rich mode
-  await editorArea.locator('.tiptap').click();
-  await page.keyboard.type('# My Heading');
-  await expect(editorArea.locator('h1')).toBeVisible();
+	// Type a heading in rich mode
+	await editorArea.locator('.tiptap').click();
+	await page.keyboard.type('# My Heading');
+	await expect(editorArea.locator('h1')).toBeVisible();
 
-  // Toggle to source mode
-  await page.keyboard.press('Meta+/');
+	// Toggle to source mode
+	await page.keyboard.press('Meta+/');
 
-  // h1 is gone, source editor is visible
-  await expect(editorArea.locator('h1')).not.toBeVisible();
-  await expect(editorArea.locator('[data-testid="source-editor"]')).toBeVisible();
+	// h1 is gone, source editor is visible
+	await expect(editorArea.locator('h1')).not.toBeVisible();
+	await expect(editorArea.locator('[data-testid="source-editor"]')).toBeVisible();
 });
 
 test('toggling back to rich mode preserves content', async ({ page }) => {
-  await page.goto('/');
-  const editorArea = page.locator('[data-testid="editor-area"]');
+	await page.goto('/');
+	const editorArea = page.locator('[data-testid="editor-area"]');
 
-  await editorArea.locator('.tiptap').click();
-  await page.keyboard.press('Meta+a');
-  await page.keyboard.press('Backspace');
-  await page.keyboard.type('# Preserved Heading');
+	await editorArea.locator('.tiptap').click();
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Backspace');
+	await page.keyboard.type('# Preserved Heading');
 
-  // Round-trip through source mode
-  await page.keyboard.press('Meta+/');
-  await page.keyboard.press('Meta+/');
+	// Round-trip through source mode
+	await page.keyboard.press('Meta+/');
+	await page.keyboard.press('Meta+/');
 
-  await expect(editorArea.locator('h1')).toContainText('Preserved Heading');
+	await expect(editorArea.locator('h1')).toContainText('Preserved Heading');
 });
 
 test('undo history is cleared after round-trip through source mode', async ({ page }) => {
-  // This is a known limitation — document it here so it is not mistaken for a bug.
-  // editor.commands.setContent() resets the ProseMirror history.
-  await page.goto('/');
-  const editor = page.locator('.tiptap');
-  await editor.click();
-  await page.keyboard.press('Meta+a');
-  await page.keyboard.press('Backspace');
-  await page.keyboard.type('Original text');
+	// This is a known limitation — document it here so it is not mistaken for a bug.
+	// editor.commands.setContent() resets the ProseMirror history.
+	await page.goto('/');
+	const editor = page.locator('.tiptap');
+	await editor.click();
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Backspace');
+	await page.keyboard.type('Original text');
 
-  await page.keyboard.press('Meta+/');
-  await page.keyboard.press('Meta+/');
+	await page.keyboard.press('Meta+/');
+	await page.keyboard.press('Meta+/');
 
-  // Undo should NOT revert to empty — undo stack was cleared by the toggle
-  await page.keyboard.press('Meta+z');
-  await expect(editor).toContainText('Original text');
+	// Undo should NOT revert to empty — undo stack was cleared by the toggle
+	await page.keyboard.press('Meta+z');
+	await expect(editor).toContainText('Original text');
 });
 
 test('editing in source mode updates rich mode rendering after toggle back', async ({ page }) => {
-  await page.goto('/');
-  const editorArea = page.locator('[data-testid="editor-area"]');
-  await editorArea.locator('.tiptap').click();
-  await page.keyboard.press('Meta+a');
-  await page.keyboard.press('Backspace');
-  await page.keyboard.type('# Initial Heading');
+	await page.goto('/');
+	const editorArea = page.locator('[data-testid="editor-area"]');
+	await editorArea.locator('.tiptap').click();
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Backspace');
+	await page.keyboard.type('# Initial Heading');
 
-  await page.keyboard.press('Meta+/');
-  const sourceContent = editorArea.locator('[data-testid="source-editor"] .cm-content');
-  await expect(sourceContent).toBeVisible();
-  await sourceContent.click();
-  await page.keyboard.press('Meta+a');
-  await page.keyboard.press('Backspace');
-  await page.keyboard.insertText('# Updated Heading\n');
-  await expect(sourceContent).toContainText('Updated Heading');
+	await page.keyboard.press('Meta+/');
+	const sourceContent = editorArea.locator('[data-testid="source-editor"] .cm-content');
+	await expect(sourceContent).toBeVisible();
+	await sourceContent.click();
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Backspace');
+	await page.keyboard.insertText('# Updated Heading\n');
+	await expect(sourceContent).toContainText('Updated Heading');
 
-  await page.keyboard.press('Meta+/');
-  await expect(editorArea.locator('h1')).toContainText('Updated Heading');
+	await page.keyboard.press('Meta+/');
+	await expect(editorArea.locator('h1')).toContainText('Updated Heading');
 });
 ```
 
@@ -1154,57 +1257,63 @@ Create `src/lib/components/SourcePane.svelte`:
 
 ```svelte
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
-  import { EditorView, basicSetup } from 'codemirror';
-  import { markdown } from '@codemirror/lang-markdown';
-  import { oneDark } from '@codemirror/theme-one-dark';
-  import { EditorState } from '@codemirror/state';
+	import { onMount, onDestroy } from 'svelte';
+	import { EditorView, basicSetup } from 'codemirror';
+	import { markdown } from '@codemirror/lang-markdown';
+	import { oneDark } from '@codemirror/theme-one-dark';
+	import { EditorState } from '@codemirror/state';
 
-  interface Props {
-    content:  string;
-    onChange: (value: string) => void;
-    theme:    'light' | 'dark';
-  }
+	interface Props {
+		content: string;
+		onChange: (value: string) => void;
+		theme: 'light' | 'dark';
+	}
 
-  let { content, onChange, theme }: Props = $props();
+	let { content, onChange, theme }: Props = $props();
 
-  let containerEl: HTMLElement;
-  let view: EditorView;
+	let containerEl: HTMLElement;
+	let view: EditorView;
 
-  onMount(() => {
-    view = new EditorView({
-      state: EditorState.create({
-        doc: content,
-        extensions: [
-          basicSetup,
-          markdown(),
-          ...(theme === 'dark' ? [oneDark] : []),
-          EditorView.updateListener.of((update) => {
-            if (update.docChanged) onChange(update.state.doc.toString());
-          })
-        ]
-      }),
-      parent: containerEl
-    });
-  });
+	onMount(() => {
+		view = new EditorView({
+			state: EditorState.create({
+				doc: content,
+				extensions: [
+					basicSetup,
+					markdown(),
+					...(theme === 'dark' ? [oneDark] : []),
+					EditorView.updateListener.of((update) => {
+						if (update.docChanged) onChange(update.state.doc.toString());
+					})
+				]
+			}),
+			parent: containerEl
+		});
+	});
 
-  $effect(() => {
-    if (!view) return;
-    const current = view.state.doc.toString();
-    if (current === content) return;
-    view.dispatch({
-      changes: { from: 0, to: view.state.doc.length, insert: content }
-    });
-  });
+	$effect(() => {
+		if (!view) return;
+		const current = view.state.doc.toString();
+		if (current === content) return;
+		view.dispatch({
+			changes: { from: 0, to: view.state.doc.length, insert: content }
+		});
+	});
 
-  onDestroy(() => view?.destroy());
+	onDestroy(() => view?.destroy());
 </script>
 
 <div bind:this={containerEl} data-testid="source-editor" class="source-editor"></div>
 
 <style>
-  .source-editor { height: 100%; overflow-y: auto; }
-  :global(.source-editor .cm-editor) { height: 100%; font-size: 14px; }
+	.source-editor {
+		height: 100%;
+		overflow-y: auto;
+	}
+	:global(.source-editor .cm-editor) {
+		height: 100%;
+		font-size: 14px;
+	}
 </style>
 ```
 
@@ -1212,39 +1321,43 @@ Create `src/lib/components/SourcePane.svelte`:
 
 ```svelte
 <script lang="ts">
-  import EditorPane  from './EditorPane.svelte';
-  import SourcePane  from './SourcePane.svelte';
-  import { document as doc } from '$lib/stores/document';
+	import EditorPane from './EditorPane.svelte';
+	import SourcePane from './SourcePane.svelte';
+	import { document as doc } from '$lib/stores/document';
 
-  interface Props {
-    editorMode: 'rich' | 'source';
-    theme:      'light' | 'dark';
-  }
+	interface Props {
+		editorMode: 'rich' | 'source';
+		theme: 'light' | 'dark';
+	}
 
-  let { editorMode, theme }: Props = $props();
-  let content = $state(doc.get().content);
+	let { editorMode, theme }: Props = $props();
+	let content = $state(doc.get().content);
 
-  function handleChange(md: string) {
-    content = md;
-    doc.update(md);
-  }
+	function handleChange(md: string) {
+		content = md;
+		doc.update(md);
+	}
 
-  $effect(() => {
-    const storeContent = doc.get().content;
-    if (storeContent !== content) content = storeContent;
-  });
+	$effect(() => {
+		const storeContent = doc.get().content;
+		if (storeContent !== content) content = storeContent;
+	});
 </script>
 
 {#if editorMode === 'rich'}
-  <EditorPane {content} onChange={handleChange} {theme} />
+	<EditorPane {content} onChange={handleChange} {theme} />
 {:else}
-  <SourcePane {content} onChange={handleChange} {theme} />
+	<SourcePane {content} onChange={handleChange} {theme} />
 {/if}
 ```
 
 The toggle itself is already in `+page.svelte`'s `handleKeydown` from Day 3:
+
 ```typescript
-if (e.key === '/') { e.preventDefault(); editorMode = editorMode === 'rich' ? 'source' : 'rich'; }
+if (e.key === '/') {
+	e.preventDefault();
+	editorMode = editorMode === 'rich' ? 'source' : 'rich';
+}
 ```
 
 No new shortcut wiring needed.
@@ -1283,20 +1396,20 @@ Create `src-tauri/capabilities/default.json`:
 
 ```json
 {
-  "$schema": "../gen/schemas/desktop-schema.json",
-  "identifier": "default",
-  "description": "Default permissions for mdreader",
-  "windows": ["main"],
-  "permissions": [
-    "core:default",
-    "core:window:allow-close",
-    "core:window:allow-destroy",
-    "core:path:default",
-    "dialog:allow-open",
-    "dialog:allow-save",
-    "dialog:allow-ask",
-    "shell:allow-open"
-  ]
+	"$schema": "../gen/schemas/desktop-schema.json",
+	"identifier": "default",
+	"description": "Default permissions for mdreader",
+	"windows": ["main"],
+	"permissions": [
+		"core:default",
+		"core:window:allow-close",
+		"core:window:allow-destroy",
+		"core:path:default",
+		"dialog:allow-open",
+		"dialog:allow-save",
+		"dialog:allow-ask",
+		"shell:allow-open"
+	]
 }
 ```
 
@@ -1432,16 +1545,16 @@ import { test, expect } from '@playwright/test';
 import path from 'path';
 
 test('loading a markdown file displays its content', async ({ page }) => {
-  await page.goto('/');
-  const fixturePath = path.resolve('./tests/fixtures/sample.md');
+	await page.goto('/');
+	const fixturePath = path.resolve('./tests/fixtures/sample.md');
 
-  await page.evaluate(async (p) => {
-    await (window as any).__TAURI__.core.invoke('open_file', { path: p });
-  }, fixturePath);
+	await page.evaluate(async (p) => {
+		await (window as any).__TAURI__.core.invoke('open_file', { path: p });
+	}, fixturePath);
 
-  const editor = page.locator('[data-testid="editor-area"] .tiptap');
-  await expect(editor.locator('h1')).toContainText('Sample Document');
-  await expect(editor.locator('h2')).toContainText('Section Two');
+	const editor = page.locator('[data-testid="editor-area"] .tiptap');
+	await expect(editor.locator('h1')).toContainText('Sample Document');
+	await expect(editor.locator('h2')).toContainText('Section Two');
 });
 ```
 
@@ -1460,14 +1573,14 @@ import { open } from '@tauri-apps/plugin-dialog';
 import { document as doc } from '$lib/stores/document';
 
 async function openFile() {
-  const selected = await open({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
-  if (!selected || Array.isArray(selected)) return;
-  const content = await invoke<string>('open_file', { path: selected });
-  doc.load(content, selected as string);
+	const selected = await open({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
+	if (!selected || Array.isArray(selected)) return;
+	const content = await invoke<string>('open_file', { path: selected });
+	doc.load(content, selected as string);
 }
 
 function newFile() {
-  doc.reset();
+	doc.reset();
 }
 ```
 
@@ -1553,20 +1666,23 @@ Register new commands in `generate_handler!`.
 import { save as saveDialog } from '@tauri-apps/plugin-dialog';
 
 async function save() {
-  const { content, filePath } = doc.get();
-  if (!filePath) { await saveAs(); return; }
-  await invoke('save_file', { content });
-  doc.markSaved();
+	const { content, filePath } = doc.get();
+	if (!filePath) {
+		await saveAs();
+		return;
+	}
+	await invoke('save_file', { content });
+	doc.markSaved();
 }
 
 async function saveAs() {
-  const { content } = doc.get();
-  const path = await saveDialog({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
-  if (!path) return;
-  await invoke('set_current_file', { path });
-  await invoke('save_file', { content });
-  doc.load(content, path);
-  doc.markSaved();
+	const { content } = doc.get();
+	const path = await saveDialog({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
+	if (!path) return;
+	await invoke('set_current_file', { path });
+	await invoke('save_file', { content });
+	doc.load(content, path);
+	doc.markSaved();
 }
 ```
 
@@ -1576,11 +1692,11 @@ Auto-save — start the interval once on mount:
 import { onMount } from 'svelte';
 
 onMount(() => {
-  const id = setInterval(() => {
-    const { isDirty, filePath } = doc.get();
-    if (isDirty && filePath) save();
-  }, 30_000);
-  return () => clearInterval(id);
+	const id = setInterval(() => {
+		const { isDirty, filePath } = doc.get();
+		if (isDirty && filePath) save();
+	}, 30_000);
+	return () => clearInterval(id);
 });
 ```
 
@@ -1595,20 +1711,20 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ask } from '@tauri-apps/plugin-dialog';
 
 onMount(() => {
-  let unlisten: (() => void) | undefined;
-  void (async () => {
-    const appWindow = getCurrentWindow();
-    unlisten = await appWindow.onCloseRequested(async (event) => {
-      if (!doc.get().isDirty) return;
-      event.preventDefault();
-      const confirmed = await ask('You have unsaved changes. Quit without saving?', {
-        title: 'Unsaved Changes',
-        kind: 'warning'
-      });
-      if (confirmed) await appWindow.destroy();
-    });
-  })();
-  return () => unlisten?.();
+	let unlisten: (() => void) | undefined;
+	void (async () => {
+		const appWindow = getCurrentWindow();
+		unlisten = await appWindow.onCloseRequested(async (event) => {
+			if (!doc.get().isDirty) return;
+			event.preventDefault();
+			const confirmed = await ask('You have unsaved changes. Quit without saving?', {
+				title: 'Unsaved Changes',
+				kind: 'warning'
+			});
+			if (confirmed) await appWindow.destroy();
+		});
+	})();
+	return () => unlisten?.();
 });
 ```
 
@@ -1619,10 +1735,10 @@ the dirty indicator:
 
 ```typescript
 test('unsaved changes show bullet in title', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('.tiptap').click();
-  await page.keyboard.type('New content');
-  await expect(page).toHaveTitle(/•.*mdreader|mdreader.*•/);
+	await page.goto('/');
+	await page.locator('.tiptap').click();
+	await page.keyboard.type('New content');
+	await expect(page).toHaveTitle(/•.*mdreader|mdreader.*•/);
 });
 ```
 
@@ -1783,27 +1899,31 @@ Clicking a recent file calls `openFile` — pass it down as a prop:
 ```svelte
 <!-- RecentFiles.svelte -->
 <script lang="ts">
-  import { invoke } from '@tauri-apps/api/core';
-  import { onMount } from 'svelte';
+	import { invoke } from '@tauri-apps/api/core';
+	import { onMount } from 'svelte';
 
-  interface Props { onOpen: (path: string) => void; }
-  let { onOpen }: Props = $props();
+	interface Props {
+		onOpen: (path: string) => void;
+	}
+	let { onOpen }: Props = $props();
 
-  let paths: string[] = $state([]);
-  onMount(async () => { paths = await invoke<string[]>('get_recent_files'); });
+	let paths: string[] = $state([]);
+	onMount(async () => {
+		paths = await invoke<string[]>('get_recent_files');
+	});
 
-  const displayName = (p: string) => p.split('/').pop() ?? p;
+	const displayName = (p: string) => p.split('/').pop() ?? p;
 </script>
 
 {#if paths.length > 0}
-  <section class="recent">
-    <p class="label">Recent</p>
-    {#each paths as path}
-      <button class="item" onclick={() => onOpen(path)} title={path}>
-        {displayName(path)}
-      </button>
-    {/each}
-  </section>
+	<section class="recent">
+		<p class="label">Recent</p>
+		{#each paths as path}
+			<button class="item" onclick={() => onOpen(path)} title={path}>
+				{displayName(path)}
+			</button>
+		{/each}
+	</section>
 {/if}
 ```
 
@@ -1827,35 +1947,35 @@ recent files appear in sidebar after opening a file.
 
 Create `src/lib/outline.test.ts`:
 
-```typescript
+````typescript
 import { describe, it, expect } from 'vitest';
 import { extractHeadings } from './outline';
 
 describe('extractHeadings', () => {
-  it('returns empty array for no headings', () => {
-    expect(extractHeadings('Just a paragraph.')).toEqual([]);
-  });
+	it('returns empty array for no headings', () => {
+		expect(extractHeadings('Just a paragraph.')).toEqual([]);
+	});
 
-  it('extracts a single H1', () => {
-    const result = extractHeadings('# Title');
-    expect(result).toEqual([{ level: 1, text: 'Title', slug: 'title' }]);
-  });
+	it('extracts a single H1', () => {
+		const result = extractHeadings('# Title');
+		expect(result).toEqual([{ level: 1, text: 'Title', slug: 'title' }]);
+	});
 
-  it('extracts mixed levels in order', () => {
-    const md = '# H1\n\nparagraph\n\n## H2\n\n### H3';
-    const result = extractHeadings(md);
-    expect(result).toHaveLength(3);
-    expect(result[0]).toMatchObject({ level: 1, text: 'H1' });
-    expect(result[1]).toMatchObject({ level: 2, text: 'H2' });
-    expect(result[2]).toMatchObject({ level: 3, text: 'H3' });
-  });
+	it('extracts mixed levels in order', () => {
+		const md = '# H1\n\nparagraph\n\n## H2\n\n### H3';
+		const result = extractHeadings(md);
+		expect(result).toHaveLength(3);
+		expect(result[0]).toMatchObject({ level: 1, text: 'H1' });
+		expect(result[1]).toMatchObject({ level: 2, text: 'H2' });
+		expect(result[2]).toMatchObject({ level: 3, text: 'H3' });
+	});
 
-  it('ignores headings inside code blocks', () => {
-    const md = '```\n# not a heading\n```';
-    expect(extractHeadings(md)).toHaveLength(0);
-  });
+	it('ignores headings inside code blocks', () => {
+		const md = '```\n# not a heading\n```';
+		expect(extractHeadings(md)).toHaveLength(0);
+	});
 });
-```
+````
 
 ```bash
 npm run test:unit
@@ -1866,35 +1986,41 @@ npm run test:unit
 
 Create `src/lib/outline.ts`:
 
-```typescript
+````typescript
 export interface Heading {
-  level: number;
-  text:  string;
-  slug:  string;  // used to scroll-to via element id
+	level: number;
+	text: string;
+	slug: string; // used to scroll-to via element id
 }
 
 export function extractHeadings(markdown: string): Heading[] {
-  const headings: Heading[] = [];
-  let inCodeBlock = false;
+	const headings: Heading[] = [];
+	let inCodeBlock = false;
 
-  for (const line of markdown.split('\n')) {
-    if (line.startsWith('```')) { inCodeBlock = !inCodeBlock; continue; }
-    if (inCodeBlock) continue;
+	for (const line of markdown.split('\n')) {
+		if (line.startsWith('```')) {
+			inCodeBlock = !inCodeBlock;
+			continue;
+		}
+		if (inCodeBlock) continue;
 
-    const match = line.match(/^(#{1,3})\s+(.+)/);
-    if (match) {
-      const text = match[2].trim();
-      headings.push({
-        level: match[1].length,
-        text,
-        slug: text.toLowerCase().replace(/[^\w\s-]/g, '').replace(/\s+/g, '-')
-      });
-    }
-  }
+		const match = line.match(/^(#{1,3})\s+(.+)/);
+		if (match) {
+			const text = match[2].trim();
+			headings.push({
+				level: match[1].length,
+				text,
+				slug: text
+					.toLowerCase()
+					.replace(/[^\w\s-]/g, '')
+					.replace(/\s+/g, '-')
+			});
+		}
+	}
 
-  return headings;
+	return headings;
 }
-```
+````
 
 ```bash
 npm run test:unit
@@ -1909,18 +2035,18 @@ Add to `tests/outline.test.ts`:
 import { test, expect } from '@playwright/test';
 
 test('sidebar shows headings from document', async ({ page }) => {
-  await page.goto('/');
-  const editor = page.locator('.tiptap');
-  await editor.click();
-  await page.keyboard.press('Meta+a');
-  await page.keyboard.press('Backspace');
-  await page.keyboard.type('# First Heading');
-  await page.keyboard.press('Enter');
-  await page.keyboard.type('## Second Heading');
+	await page.goto('/');
+	const editor = page.locator('.tiptap');
+	await editor.click();
+	await page.keyboard.press('Meta+a');
+	await page.keyboard.press('Backspace');
+	await page.keyboard.type('# First Heading');
+	await page.keyboard.press('Enter');
+	await page.keyboard.type('## Second Heading');
 
-  const sidebar = page.locator('[data-testid="sidebar"]');
-  await expect(sidebar).toContainText('First Heading');
-  await expect(sidebar).toContainText('Second Heading');
+	const sidebar = page.locator('[data-testid="sidebar"]');
+	await expect(sidebar).toContainText('First Heading');
+	await expect(sidebar).toContainText('Second Heading');
 });
 ```
 
@@ -1935,36 +2061,38 @@ Update `Sidebar.svelte` to read the document store and derive headings:
 
 ```svelte
 <script lang="ts">
-  import { document as doc } from '$lib/stores/document';
-  import { extractHeadings } from '$lib/outline';
-  import RecentFiles from './RecentFiles.svelte';
+	import { document as doc } from '$lib/stores/document';
+	import { extractHeadings } from '$lib/outline';
+	import RecentFiles from './RecentFiles.svelte';
 
-  interface Props { onOpenFile: (path: string) => void; }
-  let { onOpenFile }: Props = $props();
+	interface Props {
+		onOpenFile: (path: string) => void;
+	}
+	let { onOpenFile }: Props = $props();
 
-  // Debounce heading extraction — don't re-derive on every keystroke
-  let headings = $derived.by(() => {
-    const content = doc.get().content;
-    return extractHeadings(content);
-  });
+	// Debounce heading extraction — don't re-derive on every keystroke
+	let headings = $derived.by(() => {
+		const content = doc.get().content;
+		return extractHeadings(content);
+	});
 </script>
 
 <div data-testid="sidebar" class="sidebar">
-  <RecentFiles onOpen={onOpenFile} />
+	<RecentFiles onOpen={onOpenFile} />
 
-  {#if headings.length > 0}
-    <section class="outline">
-      <p class="label">Outline</p>
-      {#each headings as h}
-        <button
-          class="heading-item level-{h.level}"
-          onclick={() => document.getElementById(h.slug)?.scrollIntoView({ behavior: 'smooth' })}
-        >
-          {h.text}
-        </button>
-      {/each}
-    </section>
-  {/if}
+	{#if headings.length > 0}
+		<section class="outline">
+			<p class="label">Outline</p>
+			{#each headings as h}
+				<button
+					class="heading-item level-{h.level}"
+					onclick={() => document.getElementById(h.slug)?.scrollIntoView({ behavior: 'smooth' })}
+				>
+					{h.text}
+				</button>
+			{/each}
+		</section>
+	{/if}
 </div>
 ```
 
@@ -2005,29 +2133,31 @@ Add to `tests/outline.test.ts`:
 
 ```typescript
 test('clicking a sidebar heading scrolls the editor', async ({ page }) => {
-  await page.goto('/');
-  const editor = page.locator('.tiptap');
-  await editor.click();
-  // Type enough content to create a scrollable document
-  await page.keyboard.type('# First\n\n' + 'paragraph\n\n'.repeat(20) + '## Deep Section');
+	await page.goto('/');
+	const editor = page.locator('.tiptap');
+	await editor.click();
+	// Type enough content to create a scrollable document
+	await page.keyboard.type('# First\n\n' + 'paragraph\n\n'.repeat(20) + '## Deep Section');
 
-  await page.locator('[data-testid="sidebar"]').getByText('Deep Section').click();
-  // The heading should now be in view
-  const heading = editor.locator('h2');
-  await expect(heading).toBeInViewport();
+	await page.locator('[data-testid="sidebar"]').getByText('Deep Section').click();
+	// The heading should now be in view
+	const heading = editor.locator('h2');
+	await expect(heading).toBeInViewport();
 });
 
 test('active heading is highlighted in sidebar on scroll', async ({ page }) => {
-  await page.goto('/');
-  const editor = page.locator('.tiptap');
-  await editor.click();
-  await page.keyboard.type('# First\n\n' + 'paragraph\n\n'.repeat(20) + '## Second');
+	await page.goto('/');
+	const editor = page.locator('.tiptap');
+	await editor.click();
+	await page.keyboard.type('# First\n\n' + 'paragraph\n\n'.repeat(20) + '## Second');
 
-  // Scroll to bottom
-  await page.locator('[data-testid="editor-area"]').evaluate((el) => el.scrollTop = el.scrollHeight);
+	// Scroll to bottom
+	await page
+		.locator('[data-testid="editor-area"]')
+		.evaluate((el) => (el.scrollTop = el.scrollHeight));
 
-  const secondItem = page.locator('[data-testid="sidebar"]').getByText('Second');
-  await expect(secondItem).toHaveClass(/active/);
+	const secondItem = page.locator('[data-testid="sidebar"]').getByText('Second');
+	await expect(secondItem).toHaveClass(/active/);
 });
 ```
 
@@ -2039,20 +2169,20 @@ Use an `IntersectionObserver` in `Sidebar.svelte` to track which heading is visi
 let activeSlug = $state('');
 
 $effect(() => {
-  const observer = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (entry.isIntersecting) activeSlug = entry.target.id;
-      }
-    },
-    { threshold: 0.5 }
-  );
+	const observer = new IntersectionObserver(
+		(entries) => {
+			for (const entry of entries) {
+				if (entry.isIntersecting) activeSlug = entry.target.id;
+			}
+		},
+		{ threshold: 0.5 }
+	);
 
-  document.querySelectorAll('.tiptap h1, .tiptap h2, .tiptap h3').forEach((el) => {
-    observer.observe(el);
-  });
+	document.querySelectorAll('.tiptap h1, .tiptap h2, .tiptap h3').forEach((el) => {
+		observer.observe(el);
+	});
 
-  return () => observer.disconnect();
+	return () => observer.disconnect();
 });
 ```
 
@@ -2083,13 +2213,24 @@ via a `svelte:window` handler scoped to when the editor is focused:
 
 ```typescript
 function handleEditorKeydown(e: KeyboardEvent) {
-  if (!editor?.isFocused) return;
-  if (e.metaKey) {
-    if (e.key === 'b') { e.preventDefault(); editor.chain().focus().toggleBold().run(); }
-    if (e.key === 'i') { e.preventDefault(); editor.chain().focus().toggleItalic().run(); }
-    if (e.key === 'k') { e.preventDefault(); /* open link dialog — Day 15 */ }
-    if (e.key === '`') { e.preventDefault(); editor.chain().focus().toggleCode().run(); }
-  }
+	if (!editor?.isFocused) return;
+	if (e.metaKey) {
+		if (e.key === 'b') {
+			e.preventDefault();
+			editor.chain().focus().toggleBold().run();
+		}
+		if (e.key === 'i') {
+			e.preventDefault();
+			editor.chain().focus().toggleItalic().run();
+		}
+		if (e.key === 'k') {
+			e.preventDefault(); /* open link dialog — Day 15 */
+		}
+		if (e.key === '`') {
+			e.preventDefault();
+			editor.chain().focus().toggleCode().run();
+		}
+	}
 }
 ```
 
@@ -2124,21 +2265,21 @@ across all components, add a manual override option.
 
 ```typescript
 test('dark theme applies dark background', async ({ page }) => {
-  await page.emulateMedia({ colorScheme: 'dark' });
-  await page.goto('/');
-  const bg = await page.locator('body').evaluate((el) =>
-    getComputedStyle(el).getPropertyValue('--color-bg').trim()
-  );
-  expect(bg).toBe('#1e1e1e');
+	await page.emulateMedia({ colorScheme: 'dark' });
+	await page.goto('/');
+	const bg = await page
+		.locator('body')
+		.evaluate((el) => getComputedStyle(el).getPropertyValue('--color-bg').trim());
+	expect(bg).toBe('#1e1e1e');
 });
 
 test('light theme applies light background', async ({ page }) => {
-  await page.emulateMedia({ colorScheme: 'light' });
-  await page.goto('/');
-  const bg = await page.locator('body').evaluate((el) =>
-    getComputedStyle(el).getPropertyValue('--color-bg').trim()
-  );
-  expect(bg).toBe('#ffffff');
+	await page.emulateMedia({ colorScheme: 'light' });
+	await page.goto('/');
+	const bg = await page
+		.locator('body')
+		.evaluate((el) => getComputedStyle(el).getPropertyValue('--color-bg').trim());
+	expect(bg).toBe('#ffffff');
 });
 ```
 
@@ -2170,18 +2311,18 @@ status bar. Verify with an e2e test:
 
 ```typescript
 test('Cmd+Shift+F hides sidebar and status bar', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.locator('[data-testid="sidebar"]')).toBeVisible();
-  await page.keyboard.press('Meta+Shift+F');
-  await expect(page.locator('[data-testid="sidebar"]')).not.toBeVisible();
-  await expect(page.locator('[data-testid="status-bar"]')).not.toBeVisible();
+	await page.goto('/');
+	await expect(page.locator('[data-testid="sidebar"]')).toBeVisible();
+	await page.keyboard.press('Meta+Shift+F');
+	await expect(page.locator('[data-testid="sidebar"]')).not.toBeVisible();
+	await expect(page.locator('[data-testid="status-bar"]')).not.toBeVisible();
 });
 
 test('Cmd+Shift+F again restores layout', async ({ page }) => {
-  await page.goto('/');
-  await page.keyboard.press('Meta+Shift+F');
-  await page.keyboard.press('Meta+Shift+F');
-  await expect(page.locator('[data-testid="sidebar"]')).toBeVisible();
+	await page.goto('/');
+	await page.keyboard.press('Meta+Shift+F');
+	await page.keyboard.press('Meta+Shift+F');
+	await expect(page.locator('[data-testid="sidebar"]')).toBeVisible();
 });
 ```
 
@@ -2192,12 +2333,12 @@ on `<html>`. Verify with an e2e test:
 
 ```typescript
 test('Cmd+= increases editor font size', async ({ page }) => {
-  await page.goto('/');
-  await page.keyboard.press('Meta+=');
-  const size = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--font-size-editor').trim()
-  );
-  expect(size).toBe('17px');
+	await page.goto('/');
+	await page.keyboard.press('Meta+=');
+	const size = await page.evaluate(() =>
+		getComputedStyle(document.documentElement).getPropertyValue('--font-size-editor').trim()
+	);
+	expect(size).toBe('17px');
 });
 ```
 
@@ -2233,17 +2374,25 @@ let showFindBar = $state(false);
 let showReplace = $state(false);
 
 // In handleKeydown:
-if (e.key === 'f') { e.preventDefault(); showFindBar = !showFindBar; showReplace = false; }
-if (e.key === 'h') { e.preventDefault(); showFindBar = true; showReplace = true; }
+if (e.key === 'f') {
+	e.preventDefault();
+	showFindBar = !showFindBar;
+	showReplace = false;
+}
+if (e.key === 'h') {
+	e.preventDefault();
+	showFindBar = true;
+	showReplace = true;
+}
 ```
 
 Pass `showFindBar` and `showReplace` to `EditorContainer`:
 
 ```svelte
 {#snippet editor()}
-  <div data-testid="editor-area" class="editor-area">
-    <EditorContainer {editorMode} {theme} {showFindBar} {showReplace} />
-  </div>
+	<div data-testid="editor-area" class="editor-area">
+		<EditorContainer {editorMode} {theme} {showFindBar} {showReplace} />
+	</div>
 {/snippet}
 ```
 
@@ -2251,19 +2400,19 @@ Pass `showFindBar` and `showReplace` to `EditorContainer`:
 
 ```typescript
 test('Cmd+F shows find bar', async ({ page }) => {
-  await page.goto('/');
-  await page.keyboard.press('Meta+f');
-  await expect(page.locator('[data-testid="find-bar"]')).toBeVisible();
+	await page.goto('/');
+	await page.keyboard.press('Meta+f');
+	await expect(page.locator('[data-testid="find-bar"]')).toBeVisible();
 });
 
 test('find highlights matching text', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('.tiptap').click();
-  await page.keyboard.type('hello world hello');
-  await page.keyboard.press('Meta+f');
-  await page.locator('[data-testid="find-input"]').fill('hello');
-  const marks = page.locator('.tiptap mark');
-  await expect(marks).toHaveCount(2);
+	await page.goto('/');
+	await page.locator('.tiptap').click();
+	await page.keyboard.type('hello world hello');
+	await page.keyboard.press('Meta+f');
+	await page.locator('[data-testid="find-input"]').fill('hello');
+	const marks = page.locator('.tiptap mark');
+	await expect(marks).toHaveCount(2);
 });
 ```
 
@@ -2296,16 +2445,16 @@ write it to disk alongside the current document, insert an `![](asset://...)` ma
 
 ```typescript
 editorEl.addEventListener('paste', async (e) => {
-  const file = e.clipboardData?.files[0];
-  if (!file || !file.type.startsWith('image/')) return;
-  e.preventDefault();
-  const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
-  const { filePath } = doc.get();
-  if (!filePath) return; // require a saved document before inserting images
-  const dir   = filePath.split('/').slice(0, -1).join('/');
-  const name  = `${Date.now()}-${file.name}`;
-  const saved = await invoke<string>('save_image', { path: `${dir}/${name}`, bytes });
-  editor.chain().focus().insertContent(`![](asset://${saved})`).run();
+	const file = e.clipboardData?.files[0];
+	if (!file || !file.type.startsWith('image/')) return;
+	e.preventDefault();
+	const bytes = Array.from(new Uint8Array(await file.arrayBuffer()));
+	const { filePath } = doc.get();
+	if (!filePath) return; // require a saved document before inserting images
+	const dir = filePath.split('/').slice(0, -1).join('/');
+	const name = `${Date.now()}-${file.name}`;
+	const saved = await invoke<string>('save_image', { path: `${dir}/${name}`, bytes });
+	editor.chain().focus().insertContent(`![](asset://${saved})`).run();
 });
 ```
 
@@ -2439,26 +2588,26 @@ git commit -m "perf: memory audit and fixes"
 
 ## Definition of Done
 
-| Day | Gate |
-|-----|------|
-| 1–2 | CI green: lint → Vitest → cargo test → Playwright |
-| 3   | 5 layout tests pass, document store tests pass |
-| 4   | 7 round-trip unit tests pass, 4 editor e2e tests pass |
-| 5   | 4 extended round-trip tests pass, 2 new e2e tests pass |
-| 6   | 3 source mode e2e tests pass |
-| 7   | 3 Rust file-read tests pass, capabilities configured |
-| 8   | 5 Rust file-write tests pass, dirty indicator e2e passes |
-| 9   | 4 Rust recent-files tests pass |
-| 10  | 4 heading extraction unit tests pass, outline e2e passes |
-| 11  | Scroll navigation and active highlight e2e pass |
+| Day | Gate                                                       |
+| --- | ---------------------------------------------------------- |
+| 1–2 | CI green: lint → Vitest → cargo test → Playwright          |
+| 3   | 5 layout tests pass, document store tests pass             |
+| 4   | 7 round-trip unit tests pass, 4 editor e2e tests pass      |
+| 5   | 4 extended round-trip tests pass, 2 new e2e tests pass     |
+| 6   | 3 source mode e2e tests pass                               |
+| 7   | 3 Rust file-read tests pass, capabilities configured       |
+| 8   | 5 Rust file-write tests pass, dirty indicator e2e passes   |
+| 9   | 4 Rust recent-files tests pass                             |
+| 10  | 4 heading extraction unit tests pass, outline e2e passes   |
+| 11  | Scroll navigation and active highlight e2e pass            |
 | 12  | Editor shortcuts work, menu items trigger correct handlers |
-| 13  | Theme e2e tests pass in both light and dark |
-| 14  | Distraction-free and font size e2e tests pass |
-| 15  | Find bar visible, highlight e2e test passes |
-| 16  | Image paste integration verified manually |
-| 17  | No pure function below 80% branch coverage |
-| 18  | `.dmg` produced by CI on `v*` tag |
-| 19  | Idle < 80MB, 10K-line file < 150MB |
+| 13  | Theme e2e tests pass in both light and dark                |
+| 14  | Distraction-free and font size e2e tests pass              |
+| 15  | Find bar visible, highlight e2e test passes                |
+| 16  | Image paste integration verified manually                  |
+| 17  | No pure function below 80% branch coverage                 |
+| 18  | `.dmg` produced by CI on `v*` tag                          |
+| 19  | Idle < 80MB, 10K-line file < 150MB                         |
 
 **Beyond the original gates:** multi-section Playwright tests (`tests/sections-render.test.ts`),
 Tauri 2 quit flow (`onCloseRequested`, `allow-destroy`), and editor sync that avoids a false

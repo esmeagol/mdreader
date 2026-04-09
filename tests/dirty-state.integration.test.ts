@@ -12,7 +12,11 @@
 
 import { test, expect } from '@playwright/test';
 
-async function loadViaStore(page: import('@playwright/test').Page, markdown: string, filePath: string) {
+async function loadViaStore(
+	page: import('@playwright/test').Page,
+	markdown: string,
+	filePath: string
+) {
 	await page.evaluate(
 		async ({ md, path }) => {
 			// @ts-expect-error Vite browser runtime import path
