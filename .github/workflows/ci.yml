@@ -46,6 +46,9 @@ jobs:
       - name: Unit tests (Rust)
         run: cd src-tauri && cargo test
 
+      - name: Build Tauri binary (debug)
+        run: cd src-tauri && cargo build
+
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 
