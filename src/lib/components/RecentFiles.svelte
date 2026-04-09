@@ -1,26 +1,18 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { recentFiles } from '$lib/stores/recentFiles';
 
 	interface Props {
 		onOpen: (path: string) => void;
 	}
 	let { onOpen }: Props = $props();
 
-	let paths: string[] = $state([]);
-
-	onMount(async () => {
-		if (!('__TAURI_INTERNALS__' in window)) return;
-		const { invoke } = await import('@tauri-apps/api/core');
-		paths = await invoke<string[]>('get_recent_files');
-	});
-
 	const displayName = (p: string) => p.split('/').pop() ?? p;
 </script>
 
-{#if paths.length > 0}
+{#if $recentFiles.length > 0}
 	<section class="recent">
 		<p class="label">Recent</p>
-		{#each paths as path (path)}
+		{#each $recentFiles as path (path)}
 			<button class="item" onclick={() => onOpen(path)} title={path}>
 				{displayName(path)}
 			</button>

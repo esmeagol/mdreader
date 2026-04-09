@@ -60,6 +60,26 @@ test('save error clears after markSaved', async ({ page }) => {
 	await expect(page.locator('[data-testid="status-bar"]')).not.toContainText('Disk full');
 });
 
+test('sidebar recent list updates when filePath changes', async ({ page }) => {
+	await page.goto('/');
+
+	// Initially no recent section
+	await expect(page.locator('[data-testid="sidebar"] .recent')).not.toBeVisible();
+
+	// Simulate a file being loaded (as openFile would do in Tauri runtime)
+	await page.evaluate(async () => {
+		// @ts-expect-error Vite browser runtime import path
+		const { document } = await import('/src/lib/stores/document.ts');
+		// @ts-expect-error Vite browser runtime import path
+		const { recentFiles } = await import('/src/lib/stores/recentFiles.ts');
+		document.load('# Hello', '/tmp/notes.md');
+		recentFiles.prepend('/tmp/notes.md');
+	});
+
+	await expect(page.locator('[data-testid="sidebar"] .recent')).toBeVisible();
+	await expect(page.locator('[data-testid="sidebar"] .recent')).toContainText('notes.md');
+});
+
 test('opening a file when clean skips confirmation', async ({ page }) => {
 	await page.goto('/');
 
