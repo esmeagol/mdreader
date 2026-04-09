@@ -13,8 +13,15 @@
 	import TableHeader from '@tiptap/extension-table-header';
 	import { common, createLowlight } from 'lowlight';
 	import { getMarkdown } from '$lib/markdown';
+	import { slugify } from '$lib/outline';
 
 	const lowlight = createLowlight(common);
+
+	function stampHeadingIds(root: HTMLElement) {
+		root.querySelectorAll('h1, h2, h3').forEach((el) => {
+			el.id = slugify(el.textContent ?? '');
+		});
+	}
 
 	interface Props {
 		content: string;
@@ -52,6 +59,7 @@
 			},
 			onUpdate: ({ editor }) => {
 				onChange(getMarkdown(editor));
+				stampHeadingIds(editorEl);
 			}
 		});
 
@@ -72,6 +80,7 @@
 	$effect(() => {
 		if (editor && content !== getMarkdown(editor)) {
 			editor.commands.setContent(content, { emitUpdate: false });
+			stampHeadingIds(editorEl);
 		}
 	});
 
