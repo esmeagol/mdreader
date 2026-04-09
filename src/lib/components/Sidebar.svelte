@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { headings } from '$lib/stores/headings';
 	import RecentFiles from './RecentFiles.svelte';
 
@@ -6,6 +7,51 @@
 		onOpenFile: (path: string) => void;
 	}
 	let { onOpenFile }: Props = $props();
+
+	let activeSlug = $state('');
+
+	$effect(() => {
+		void $headings;
+		let cancelled = false;
+		let observer: IntersectionObserver | undefined;
+
+		void (async () => {
+			await tick();
+			await new Promise<void>((r) => requestAnimationFrame(() => r()));
+			if (cancelled) return;
+
+			const root = document.querySelector('.zone-editor');
+			const editor = document.querySelector('.tiptap');
+			if (!root || !editor) return;
+
+			const ratios = new Map<Element, number>();
+			const applyActive = () => {
+				const list = [...editor.querySelectorAll<HTMLElement>('h1,h2,h3')];
+				let slug = '';
+				for (const h of list) {
+					if (!h.id) continue;
+					if ((ratios.get(h) ?? 0) >= 0.5) slug = h.id;
+				}
+				activeSlug = slug;
+			};
+
+			observer = new IntersectionObserver(
+				(entries) => {
+					for (const e of entries) ratios.set(e.target, e.intersectionRatio);
+					applyActive();
+				},
+				{ root, threshold: [0, 0.25, 0.5, 0.75, 1] }
+			);
+
+			for (const h of editor.querySelectorAll('h1,h2,h3')) observer.observe(h);
+			applyActive();
+		})();
+
+		return () => {
+			cancelled = true;
+			observer?.disconnect();
+		};
+	});
 </script>
 
 <div data-testid="sidebar" class="sidebar">
@@ -17,6 +63,7 @@
 			{#each $headings as h (h.slug + h.level)}
 				<button
 					class="heading-item level-{h.level}"
+					class:active={h.slug === activeSlug}
 					onclick={() => {
 						document.getElementById(h.slug)?.scrollIntoView({ behavior: 'smooth' });
 					}}
@@ -63,6 +110,10 @@
 	}
 	.heading-item:hover {
 		background: var(--color-border);
+	}
+	.heading-item.active {
+		background: var(--color-border);
+		font-weight: 600;
 	}
 	.heading-item.level-2 {
 		padding-left: 14px;
