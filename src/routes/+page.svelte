@@ -78,20 +78,44 @@
 		let unlisten: (() => void) | undefined;
 		if (isTauriRuntime()) {
 			void (async () => {
-				const [{ ask }, { getCurrentWindow }] = await Promise.all([
+				const [{ ask }, { getCurrentWindow }, { installTauriAppMenu }] = await Promise.all([
 					import('@tauri-apps/plugin-dialog'),
-					import('@tauri-apps/api/window')
+					import('@tauri-apps/api/window'),
+					import('$lib/tauriAppMenu')
 				]);
-				const appWindow = getCurrentWindow();
-				unlisten = await appWindow.onCloseRequested(async (event) => {
-					if (!doc.get().isDirty) return;
-					event.preventDefault();
-					const confirmed = await ask('You have unsaved changes. Quit without saving?', {
-						title: 'Unsaved Changes',
-						kind: 'warning'
+				try {
+					await installTauriAppMenu({
+						newFile: () => newFile(),
+						openFile: () => openFile(),
+						save: () => save(),
+						saveAs: () => saveAs(),
+						toggleSourceMode: () => {
+							editorMode = editorMode === 'rich' ? 'source' : 'rich';
+						},
+						toggleSidebar: () => {
+							sidebarVisible = !sidebarVisible;
+						},
+						toggleDistractionFree: () => {
+							isDistractionFree = !isDistractionFree;
+						}
 					});
-					if (confirmed) await appWindow.destroy();
-				});
+				} catch {
+					/* Native menu needs a full Tauri webview; partial mocks (e2e) skip quietly. */
+				}
+				try {
+					const appWindow = getCurrentWindow();
+					unlisten = await appWindow.onCloseRequested(async (event) => {
+						if (!doc.get().isDirty) return;
+						event.preventDefault();
+						const confirmed = await ask('You have unsaved changes. Quit without saving?', {
+							title: 'Unsaved Changes',
+							kind: 'warning'
+						});
+						if (confirmed) await appWindow.destroy();
+					});
+				} catch {
+					/* Close hook needs full Tauri IPC; partial mocks (e2e) skip. */
+				}
 			})();
 		}
 
