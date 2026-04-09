@@ -1,42 +1,59 @@
-# sv
+# mdreader
 
-Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
+A native macOS markdown editor built with Tauri 2, Svelte 5, and TipTap. Edits render in place as you type — no preview pane needed.
 
-## Creating a project
+## Features
 
-If you're seeing this, you've probably already done this step. Congrats!
+- **Rich editing** — headings, bold, italic, strikethrough, inline code, blockquotes, task lists, tables, and fenced code blocks with syntax highlighting
+- **Source mode** — toggle to raw markdown with `Cmd+/`; edits sync back to rich mode
+- **File I/O** — open `.md` files with `Cmd+O`, save with `Cmd+S`, save to a new path with `Cmd+Shift+S`
+- **Auto-save** — dirty files are saved automatically every 30 seconds
+- **Quit protection** — native dialog prompts when closing with unsaved changes
+- **Dark mode** — follows macOS system appearance automatically
+- **Distraction-free mode** — `Cmd+Shift+F` hides the sidebar and status bar
+- **Font size** — `Cmd+=` / `Cmd+-` to scale editor text
+- **Word count** — live count in the status bar
+- **External links** — clicked links open in the default browser, not the app window
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Cmd+O` | Open file |
+| `Cmd+S` | Save |
+| `Cmd+Shift+S` | Save as |
+| `Cmd+N` | New file |
+| `Cmd+/` | Toggle source mode |
+| `Cmd+Shift+F` | Toggle distraction-free mode |
+| `Cmd+Shift+L` | Toggle sidebar |
+| `Cmd+=` / `Cmd+-` | Increase / decrease font size |
+
+## Tech Stack
+
+- [Tauri 2](https://tauri.app) — native shell, file I/O in Rust
+- [Svelte 5](https://svelte.dev) — UI with runes reactivity
+- [TipTap 2](https://tiptap.dev) — rich text editor (ProseMirror)
+- [CodeMirror 6](https://codemirror.net) — source mode editor
+- [tiptap-markdown](https://github.com/aguingand/tiptap-markdown) — markdown round-trip serialization
+
+## Development
 
 ```sh
-# create a new project
-npx sv create my-app
+npm install
+npm run dev        # Vite dev server (browser, no Tauri)
+npm run tauri dev  # full Tauri app
 ```
 
-To recreate this project with the same configuration:
+## Testing
 
 ```sh
-# recreate this project
-npx sv@0.15.0 create --template minimal --types ts --add prettier eslint --no-install .
-```
-
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
-
-```sh
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+npm run test:unit          # Vitest unit tests
+npx playwright test        # e2e tests against Vite dev server
+cd src-tauri && cargo test # Rust unit tests
 ```
 
 ## Building
 
-To create a production version of your app:
-
 ```sh
-npm run build
+npm run tauri build
 ```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.
