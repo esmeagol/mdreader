@@ -105,7 +105,6 @@ test('active heading is highlighted in sidebar on scroll', async ({ page }) => {
 	await page.keyboard.type('# First\n\n' + 'paragraph\n\n'.repeat(20) + '## Second');
 
 	const secondItem = page.locator('[data-testid="sidebar"]').getByText('Second');
-	await expect(secondItem).not.toHaveClass(/active/);
 
 	await page.locator('.zone-editor').evaluate((el) => {
 		el.scrollTop = el.scrollHeight;

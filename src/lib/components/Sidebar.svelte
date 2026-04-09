@@ -25,12 +25,27 @@
 			if (!root || !editor) return;
 
 			const ratios = new Map<Element, number>();
+
+			function visibleRatioInRoot(el: HTMLElement, scrollRoot: Element): number {
+				const er = el.getBoundingClientRect();
+				const rr = scrollRoot.getBoundingClientRect();
+				const h = er.height;
+				if (h <= 0) return 0;
+				const top = Math.max(er.top, rr.top);
+				const bottom = Math.min(er.bottom, rr.bottom);
+				return Math.max(0, bottom - top) / h;
+			}
+
 			const applyActive = () => {
 				const list = [...editor.querySelectorAll<HTMLElement>('h1,h2,h3')];
 				let slug = '';
 				for (const h of list) {
 					if (!h.id) continue;
-					if ((ratios.get(h) ?? 0) >= 0.5) slug = h.id;
+					const r = Math.max(ratios.get(h) ?? 0, visibleRatioInRoot(h, root));
+					if (r >= 0.5) {
+						slug = h.id;
+						break;
+					}
 				}
 				activeSlug = slug;
 			};
