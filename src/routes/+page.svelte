@@ -6,6 +6,7 @@
 	import StatusBar from '$lib/components/StatusBar.svelte';
 	import EditorContainer from '$lib/components/EditorContainer.svelte';
 	import { document as doc } from '$lib/stores/document';
+	import { themePreference } from '$lib/stores/themePreference';
 	import { isTauriRuntime, loadRecentFiles, openFile, save, saveAs, newFile } from '$lib/fileService';
 
 	let sidebarVisible = $state(true);
@@ -58,6 +59,10 @@
 			if (e.key === 'L') {
 				e.preventDefault();
 				sidebarVisible = !sidebarVisible;
+			}
+			if (e.key === 'T') {
+				e.preventDefault();
+				themePreference.cycle();
 			}
 		}
 	}
