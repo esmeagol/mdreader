@@ -15,6 +15,11 @@ test('app has status bar', async ({ page }) => {
 	await expect(page.locator('[data-testid="status-bar"]')).toBeVisible();
 });
 
+test('status bar shows Untitled when no file is open', async ({ page }) => {
+	await page.goto('/');
+	await expect(page.locator('[data-testid="document-title"]')).toContainText('Untitled');
+});
+
 test('sidebar is to the left of editor', async ({ page }) => {
 	await page.goto('/');
 	const sidebar = await page.locator('[data-testid="sidebar"]').boundingBox();

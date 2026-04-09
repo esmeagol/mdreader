@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { countWords, formatWordCount, formatTitle } from './utils';
+import { countWords, documentDisplayName, formatWordCount, formatTitle } from './utils';
 
 describe('countWords', () => {
 	it('returns 0 for empty string', () => {
@@ -30,6 +30,22 @@ describe('formatWordCount', () => {
 
 	it('returns "3 words" for 3', () => {
 		expect(formatWordCount(3)).toBe('3 words');
+	});
+});
+
+describe('documentDisplayName', () => {
+	it('returns Untitled when path is null or empty', () => {
+		expect(documentDisplayName(null)).toBe('Untitled');
+		expect(documentDisplayName('')).toBe('Untitled');
+		expect(documentDisplayName('   ')).toBe('Untitled');
+	});
+
+	it('returns final path segment for posix paths', () => {
+		expect(documentDisplayName('/docs/notes.md')).toBe('notes.md');
+	});
+
+	it('returns final segment for Windows-style paths', () => {
+		expect(documentDisplayName('C:\\Users\\me\\doc.md')).toBe('doc.md');
 	});
 });
 

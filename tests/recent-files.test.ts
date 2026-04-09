@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 	test('clicking a recent file opens that file directly', async ({ page }) => {
 	await page.addInitScript(() => {
-		(globalThis as Window & { isTauri?: boolean }).isTauri = true;
+		(window as Window & { isTauri?: boolean }).isTauri = true;
 
 		type Call = { cmd: string; payload: Record<string, unknown> | undefined };
 		(window as Window & { __TAURI_CALLS__?: Call[] }).__TAURI_CALLS__ = [];
