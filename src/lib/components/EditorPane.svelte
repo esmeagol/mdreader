@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { Editor } from '@tiptap/core';
+	import type { EditorProps } from '@tiptap/pm/view';
 	import StarterKit from '@tiptap/starter-kit';
 	import { Markdown } from 'tiptap-markdown';
 	import TaskList from '@tiptap/extension-task-list';
@@ -36,6 +37,27 @@
 	let editor: Editor;
 	let linkClickHandler: ((e: MouseEvent) => void) | undefined;
 
+	function buildEditorProps(themeVal: 'light' | 'dark'): EditorProps {
+		return {
+			attributes: {
+				class: 'tiptap',
+				'data-editor-theme': themeVal
+			},
+			handleKeyDown(_view, e) {
+				if (!editor?.isFocused) return false;
+				if (e.metaKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) {
+					e.preventDefault();
+					return true;
+				}
+				if (e.metaKey && !e.shiftKey && (e.key === '`' || e.code === 'Backquote')) {
+					e.preventDefault();
+					return editor.chain().focus().toggleCode().run();
+				}
+				return false;
+			}
+		};
+	}
+
 	onMount(() => {
 		editor = new Editor({
 			element: editorEl,
@@ -55,12 +77,7 @@
 				TableCell
 			],
 			content,
-			editorProps: {
-				attributes: {
-					class: 'tiptap',
-					'data-editor-theme': theme
-				}
-			},
+			editorProps: buildEditorProps(theme),
 			onUpdate: ({ editor }) => {
 				onChange(getMarkdown(editor));
 			}
@@ -102,12 +119,7 @@
 	$effect(() => {
 		if (!editor) return;
 		editor.setOptions({
-			editorProps: {
-				attributes: {
-					class: 'tiptap',
-					'data-editor-theme': theme
-				}
-			}
+			editorProps: buildEditorProps(theme)
 		});
 	});
 
