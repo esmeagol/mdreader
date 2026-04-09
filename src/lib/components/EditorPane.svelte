@@ -13,12 +13,13 @@
 	import TableHeader from '@tiptap/extension-table-header';
 	import { common, createLowlight } from 'lowlight';
 	import { getMarkdown } from '$lib/markdown';
-	import { HeadingId } from '$lib/HeadingId';
+	import { Headings } from '$lib/Headings';
 	import { type EditorHandle } from '$lib/editor';
 	import { DirtyState, MARK_CLEAN_KEY } from '$lib/DirtyState';
 	import { WordCount } from '$lib/WordCount';
 	import { document as doc } from '$lib/stores/document';
 	import { wordCount } from '$lib/stores/wordCount';
+	import { headings } from '$lib/stores/headings';
 
 	const lowlight = createLowlight(common);
 
@@ -40,7 +41,7 @@
 			element: editorEl,
 			extensions: [
 				StarterKit.configure({ codeBlock: false, strike: false }),
-				HeadingId,
+				Headings((h) => headings.set(h)),
 				DirtyState((isDirty) => doc.markDirty(isDirty)),
 				WordCount((count) => wordCount.set(count)),
 				Markdown,

@@ -1,23 +1,20 @@
 <script lang="ts">
-	import { document as doc } from '$lib/stores/document';
-	import { extractHeadings } from '$lib/outline';
+	import { headings } from '$lib/stores/headings';
 	import RecentFiles from './RecentFiles.svelte';
 
 	interface Props {
 		onOpenFile: (path: string) => void;
 	}
 	let { onOpenFile }: Props = $props();
-
-	let headings = $derived(extractHeadings($doc.content));
 </script>
 
 <div data-testid="sidebar" class="sidebar">
 	<RecentFiles {onOpenFile} />
 
-	{#if headings.length > 0}
+	{#if $headings.length > 0}
 		<section class="outline">
 			<p class="label">Outline</p>
-			{#each headings as h (h.slug + h.level)}
+			{#each $headings as h (h.slug + h.level)}
 				<button
 					class="heading-item level-{h.level}"
 					onclick={() => {
