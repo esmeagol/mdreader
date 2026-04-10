@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
 	import { headings } from '$lib/stores/headings';
 	import RecentFiles from './RecentFiles.svelte';
 
@@ -24,7 +25,7 @@
 			const editor = document.querySelector('.tiptap');
 			if (!root || !editor) return;
 
-			const ratios = new Map<Element, number>();
+			const ratios = new SvelteMap<Element, number>();
 
 			function visibleRatioInRoot(el: HTMLElement, scrollRoot: Element): number {
 				const er = el.getBoundingClientRect();

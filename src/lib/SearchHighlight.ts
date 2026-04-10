@@ -44,7 +44,7 @@ export const SearchHighlight = Extension.create({
 				key: searchHighlightKey,
 
 				state: {
-					init(_config, state) {
+					init() {
 						return { term: '', decorations: DecorationSet.empty };
 					},
 
