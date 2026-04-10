@@ -97,7 +97,13 @@
 			markSaved() {
 				const { tr } = editor.state;
 				editor.view.dispatch(tr.setMeta(MARK_CLEAN_KEY, true));
-			}
+			},
+			setSearchTerm(_term: string) {},
+			setReplaceTerm(_term: string) {},
+			nextMatch() {},
+			prevMatch() {},
+			replaceOne() {},
+			replaceAll() {}
 		};
 		setRichHandle(handle);
 		onReady?.(handle);

@@ -13,6 +13,8 @@
 	let isDistractionFree = $state(false);
 	let editorMode = $state<'rich' | 'source'>('rich');
 	let fontSize = $state(16);
+	let showFindBar = $state(false);
+	let showReplace = $state(false);
 
 	let theme = $derived(
 		(typeof window !== 'undefined' && window.document.documentElement.dataset.theme === 'dark'
@@ -45,6 +47,16 @@
 			if (e.key === '-') {
 				e.preventDefault();
 				setFontSize(fontSize - 1);
+			}
+			if (e.key === 'f') {
+				e.preventDefault();
+				showFindBar = !showFindBar;
+				showReplace = false;
+			}
+			if (e.key === 'h') {
+				e.preventDefault();
+				showFindBar = true;
+				showReplace = true;
 			}
 		}
 		if (e.metaKey && e.shiftKey) {
@@ -139,7 +151,7 @@
 	{#snippet toolbar()}<Toolbar />{/snippet}
 	{#snippet editor()}
 		<div data-testid="editor-area" class="editor-area">
-			<EditorContainer {editorMode} {theme} />
+			<EditorContainer {editorMode} {theme} {showFindBar} {showReplace} />
 		</div>
 	{/snippet}
 	{#snippet statusbar()}<StatusBar />{/snippet}

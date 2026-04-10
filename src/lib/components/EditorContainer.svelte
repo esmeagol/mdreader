@@ -2,14 +2,17 @@
 	import { document as doc } from '$lib/stores/document';
 	import EditorPane from './EditorPane.svelte';
 	import SourcePane from './SourcePane.svelte';
+	import FindBar from './FindBar.svelte';
 	import { type EditorHandle, setActiveMode } from '$lib/editor';
 
 	interface Props {
 		editorMode: 'rich' | 'source';
 		theme: 'light' | 'dark';
+		showFindBar?: boolean;
+		showReplace?: boolean;
 	}
 
-	let { editorMode, theme }: Props = $props();
+	let { editorMode, theme, showFindBar = false, showReplace = false }: Props = $props();
 
 	let richHandle: EditorHandle | null = $state(null);
 	let sourceHandle: EditorHandle | null = $state(null);
@@ -46,6 +49,19 @@
 		}
 	});
 </script>
+
+{#if showFindBar}
+	<FindBar
+		{showReplace}
+		onQuery={(q) => richHandle?.setSearchTerm(q)}
+		onReplace={(r) => richHandle?.setReplaceTerm(r)}
+		onNext={() => richHandle?.nextMatch()}
+		onPrev={() => richHandle?.prevMatch()}
+		onReplaceOne={() => richHandle?.replaceOne()}
+		onReplaceAll={() => richHandle?.replaceAll()}
+		onClose={() => {}}
+	/>
+{/if}
 
 <div class:hidden={editorMode !== 'rich'} class="pane-wrap">
 	<EditorPane

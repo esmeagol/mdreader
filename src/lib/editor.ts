@@ -13,6 +13,13 @@ export interface EditorHandle {
 	getContent(): string;
 	/** Reset the DirtyState clean baseline to the current doc (called after save). */
 	markSaved(): void;
+	/** Search / replace — no-ops on the source pane handle. */
+	setSearchTerm(term: string): void;
+	setReplaceTerm(term: string): void;
+	nextMatch(): void;
+	prevMatch(): void;
+	replaceOne(): void;
+	replaceAll(): void;
 }
 
 // ---------------------------------------------------------------------------

@@ -55,7 +55,13 @@
 			},
 			markSaved() {
 				// no-op: SourcePane has no clean-baseline concept
-			}
+			},
+			setSearchTerm() {},
+			setReplaceTerm() {},
+			nextMatch() {},
+			prevMatch() {},
+			replaceOne() {},
+			replaceAll() {}
 		};
 		setSourceHandle(handle);
 		onReady?.(handle);
