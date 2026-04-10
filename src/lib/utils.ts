@@ -24,22 +24,30 @@ function fileDir(filePath: string): string {
 	return filePath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
 }
 
+function encodePathSegments(path: string): string {
+	return path
+		.split('/')
+		.map(encodeURIComponent)
+		.join('/');
+}
+
 const IMAGE_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
 
 /** Rewrite relative image src attributes to asset:// URLs for Tauri rendering. */
 export function resolveImages(markdown: string, filePath: string): string {
 	const dir = fileDir(filePath);
+	const encodedDir = encodePathSegments(dir);
 	return markdown.replace(IMAGE_RE, (match, alt, src) => {
 		if (/^(https?|asset|data):/.test(src) || src.startsWith('/')) return match;
-		return `![${alt}](asset://localhost${dir}/${src})`;
+		return `![${alt}](asset://localhost${encodedDir}/${encodeURIComponent(src)})`;
 	});
 }
 
 /** Reverse resolveImages — restore relative paths before saving to disk. */
 export function unresolveImages(markdown: string, filePath: string): string {
-	const prefix = `asset://localhost${fileDir(filePath)}/`;
+	const prefix = `asset://localhost${encodePathSegments(fileDir(filePath))}/`;
 	return markdown.replace(IMAGE_RE, (match, alt, src) => {
 		if (!src.startsWith(prefix)) return match;
-		return `![${alt}](${src.slice(prefix.length)})`;
+		return `![${alt}](${decodeURIComponent(src.slice(prefix.length))})`;
 	});
 }

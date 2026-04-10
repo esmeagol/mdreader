@@ -114,6 +114,18 @@ describe('unresolveImages', () => {
 		const original = '![a](A.png)\n\n![b](B.png)';
 		expect(unresolveImages(resolveImages(original, filePath), filePath)).toBe(original);
 	});
+
+	it('percent-encodes spaces in directory segments', () => {
+		const spaced = '/Interview Prep/System Design/Redis.md';
+		const result = resolveImages('![alt](Redis1.png)', spaced);
+		expect(result).toBe('![alt](asset://localhost/Interview%20Prep/System%20Design/Redis1.png)');
+	});
+
+	it('round-trips correctly when path has spaces', () => {
+		const spaced = '/Interview Prep/System Design/Redis.md';
+		const original = '![alt](Redis1.png)';
+		expect(unresolveImages(resolveImages(original, spaced), spaced)).toBe(original);
+	});
 });
 
 describe('formatTitle', () => {
