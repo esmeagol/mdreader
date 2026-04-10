@@ -4,6 +4,7 @@ export const APP_MENU = {
 	FileOpen: 'mdreader:file_open',
 	FileSave: 'mdreader:file_save',
 	FileSaveAs: 'mdreader:file_save_as',
+	FileToggleAutoSave: 'mdreader:file_toggle_auto_save',
 	ViewToggleSource: 'mdreader:view_toggle_source',
 	ViewToggleSidebar: 'mdreader:view_toggle_sidebar',
 	ViewToggleDistractionFree: 'mdreader:view_distraction_free',
@@ -17,6 +18,7 @@ export interface AppMenuHandlers {
 	openFile: () => Promise<void>;
 	save: () => Promise<void>;
 	saveAs: () => Promise<void>;
+	toggleAutoSave: () => void;
 	toggleSourceMode: () => void;
 	toggleSidebar: () => void;
 	toggleDistractionFree: () => void;
@@ -37,6 +39,9 @@ export function dispatchAppMenuAction(id: string, handlers: AppMenuHandlers): vo
 			return;
 		case APP_MENU.FileSaveAs:
 			void handlers.saveAs();
+			return;
+		case APP_MENU.FileToggleAutoSave:
+			handlers.toggleAutoSave();
 			return;
 		case APP_MENU.ViewToggleSource:
 			handlers.toggleSourceMode();

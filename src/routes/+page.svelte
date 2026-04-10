@@ -22,6 +22,7 @@
 	let fontSize = $state(16);
 	let showFindBar = $state(false);
 	let showReplace = $state(false);
+	let autoSave = $state(false);
 
 	let theme = $derived(
 		(typeof window !== 'undefined' && window.document.documentElement.dataset.theme === 'dark'
@@ -95,6 +96,7 @@
 		void loadRecentFiles();
 
 		const intervalId = window.setInterval(() => {
+			if (!autoSave) return;
 			const { isDirty, filePath } = doc.get();
 			if (isDirty && filePath) save();
 		}, 30_000);
@@ -113,6 +115,9 @@
 						openFile: () => openFile(),
 						save: () => save(),
 						saveAs: () => saveAs(),
+						toggleAutoSave: () => {
+							autoSave = !autoSave;
+						},
 						toggleSourceMode: () => {
 							editorMode = editorMode === 'rich' ? 'source' : 'rich';
 						},

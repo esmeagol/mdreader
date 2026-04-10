@@ -1,4 +1,4 @@
-import { Menu, MenuItem, Submenu, PredefinedMenuItem } from '@tauri-apps/api/menu';
+import { Menu, MenuItem, CheckMenuItem, Submenu, PredefinedMenuItem } from '@tauri-apps/api/menu';
 import { APP_MENU, dispatchAppMenuAction, type AppMenuHandlers } from './appMenuDispatch';
 
 /**
@@ -51,6 +51,13 @@ export async function installTauriAppMenu(handlers: AppMenuHandlers): Promise<vo
 				id: APP_MENU.FileSaveAs,
 				text: 'Save As…',
 				accelerator: 'CmdOrCtrl+Shift+S',
+				action: onAction
+			}),
+			await PredefinedMenuItem.new({ item: 'Separator' }),
+			await CheckMenuItem.new({
+				id: APP_MENU.FileToggleAutoSave,
+				text: 'Auto Save',
+				checked: false,
 				action: onAction
 			})
 		]
