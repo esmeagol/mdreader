@@ -42,6 +42,11 @@ fn open_file(
     let mut rf = state.recent_files.lock().unwrap();
     rf.add(&path);
     let _ = rf.save(&app_data_dir);
+    // Grant asset protocol access to the directory containing this file so
+    // relative image references (e.g. Redis1.png) can be served.
+    if let Some(dir) = std::path::Path::new(&path).parent() {
+        let _ = app.asset_protocol_scope().allow_directory(dir, false);
+    }
     Ok(content)
 }
 
