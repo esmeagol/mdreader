@@ -20,6 +20,44 @@
 	import { WordCount } from '$lib/WordCount';
 	import { SearchHighlight, searchHighlightKey } from '$lib/SearchHighlight';
 	import Image from '@tiptap/extension-image';
+	import type { NodeViewRenderer } from '@tiptap/core';
+
+	// Custom NodeView that renders a styled fallback when an image fails to load.
+	// Shows the alt text (or decoded filename from the src) so the user knows what
+	// content is missing even when the asset URL can't be resolved.
+	const imageNodeView: NodeViewRenderer = ({ node }) => {
+		const wrapper = document.createElement('span');
+		wrapper.className = 'image-nodeview';
+
+		const img = document.createElement('img');
+		img.src = node.attrs.src ?? '';
+		img.alt = node.attrs.alt ?? '';
+		if (node.attrs.title) img.title = node.attrs.title;
+
+		img.addEventListener('error', () => {
+			img.style.display = 'none';
+			const fb = document.createElement('span');
+			fb.className = 'image-fallback';
+			// Show alt text; fall back to the filename decoded from the src URL
+			const label =
+				img.alt ||
+				decodeURIComponent((img.src.split('/').pop() ?? 'image').replace(/\?.*$/, ''));
+			fb.textContent = `\uD83D\uDDBC\uFE0F ${label}`;
+			wrapper.appendChild(fb);
+		});
+
+		wrapper.appendChild(img);
+
+		return {
+			dom: wrapper,
+			update(updatedNode) {
+				if (updatedNode.type.name !== 'image') return false;
+				img.src = updatedNode.attrs.src ?? '';
+				img.alt = updatedNode.attrs.alt ?? '';
+				return true;
+			}
+		};
+	};
 	import { document as doc } from '$lib/stores/document';
 	import { wordCount } from '$lib/stores/wordCount';
 	import { headings } from '$lib/stores/headings';
@@ -79,7 +117,7 @@
 				TableHeader,
 				TableCell,
 				SearchHighlight,
-				Image
+				Image.extend({ addNodeView: () => imageNodeView })
 			],
 			content,
 			editorProps: buildEditorProps(theme),
@@ -268,6 +306,21 @@
 	:global(.tiptap th) {
 		background: var(--color-bg-sidebar);
 		font-weight: 600;
+	}
+	:global(.image-nodeview) {
+		display: inline-block;
+	}
+	:global(.image-fallback) {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		font-size: 0.85em;
+		color: var(--color-text-muted);
+		background: var(--color-bg-sidebar);
+		border: 1px dashed var(--color-border);
+		border-radius: 4px;
+		padding: 4px 8px;
+		font-family: 'Menlo', monospace;
 	}
 	:global(.tiptap mark) {
 		background: #ffeb3b;
