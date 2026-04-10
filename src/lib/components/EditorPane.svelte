@@ -18,6 +18,7 @@
 	import { type EditorHandle, setRichHandle } from '$lib/editor';
 	import { DirtyState, MARK_CLEAN_KEY } from '$lib/DirtyState';
 	import { WordCount } from '$lib/WordCount';
+	import { SearchHighlight, searchHighlightKey } from '$lib/SearchHighlight';
 	import { document as doc } from '$lib/stores/document';
 	import { wordCount } from '$lib/stores/wordCount';
 	import { headings } from '$lib/stores/headings';
@@ -74,7 +75,8 @@
 				Table.configure({ resizable: false }),
 				TableRow,
 				TableHeader,
-				TableCell
+				TableCell,
+				SearchHighlight
 			],
 			content,
 			editorProps: buildEditorProps(theme),
@@ -98,7 +100,10 @@
 				const { tr } = editor.state;
 				editor.view.dispatch(tr.setMeta(MARK_CLEAN_KEY, true));
 			},
-			setSearchTerm(_term: string) {},
+			setSearchTerm(term: string) {
+				const { state } = editor.view;
+				editor.view.dispatch(state.tr.setMeta(searchHighlightKey, { term }));
+			},
 			setReplaceTerm(_term: string) {},
 			nextMatch() {},
 			prevMatch() {},
@@ -229,5 +234,11 @@
 	:global(.tiptap th) {
 		background: var(--color-bg-sidebar);
 		font-weight: 600;
+	}
+	:global(.tiptap mark) {
+		background: #ffeb3b;
+		color: inherit;
+		border-radius: 2px;
+		padding: 0 1px;
 	}
 </style>
