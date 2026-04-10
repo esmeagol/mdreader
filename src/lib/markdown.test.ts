@@ -37,6 +37,15 @@ function createExtendedEditor(content = '') {
 	});
 }
 
+describe('getMarkdown fallback', () => {
+	it('returns empty string when editor has no Markdown extension', () => {
+		// StarterKit alone has no markdown storage — exercises the ?? '' branch
+		const editor = new Editor({ extensions: [StarterKit] });
+		expect(getMarkdown(editor)).toBe('');
+		editor.destroy();
+	});
+});
+
 describe('markdown round-trip', () => {
 	const cases: [string, string][] = [
 		['heading 1', '# Hello World'],
