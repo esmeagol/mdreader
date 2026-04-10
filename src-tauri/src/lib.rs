@@ -11,6 +11,16 @@ pub struct AppState {
     pub recent_files: Mutex<RecentFiles>,
 }
 
+fn save_image_impl(path: &str, bytes: Vec<u8>) -> Result<String, String> {
+    std::fs::write(path, &bytes).map_err(|e| e.to_string())?;
+    Ok(path.to_string())
+}
+
+#[tauri::command]
+fn save_image(path: String, bytes: Vec<u8>) -> Result<String, String> {
+    save_image_impl(&path, bytes)
+}
+
 fn save_file_impl(state: &AppState, content: String) -> Result<(), String> {
     let path = state.current_file.lock().unwrap().clone();
     match path {
@@ -55,6 +65,33 @@ mod tests {
     use super::*;
     use std::io::Write;
     use tempfile::NamedTempFile;
+
+    // ── save_image_impl ───────────────────────────────────────────────────────
+
+    #[test]
+    fn save_image_writes_bytes_to_path() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("image.png").to_str().unwrap().to_string();
+        let bytes = vec![1u8, 2, 3, 4, 5];
+        save_image_impl(&path, bytes.clone()).unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+    }
+
+    #[test]
+    fn save_image_returns_the_path_on_success() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("img.png").to_str().unwrap().to_string();
+        let returned = save_image_impl(&path, vec![0u8]).unwrap();
+        assert_eq!(returned, path);
+    }
+
+    #[test]
+    fn save_image_errors_on_nonexistent_directory() {
+        let result = save_image_impl("/nonexistent/dir/image.png", vec![1, 2, 3]);
+        assert!(result.is_err());
+    }
+
+    // ── save_file_impl ────────────────────────────────────────────────────────
 
     #[test]
     fn save_file_impl_errors_when_no_file_open() {
@@ -107,6 +144,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             open_file,
             save_file,
+            save_image,
             set_current_file,
             get_recent_files
         ])
