@@ -19,7 +19,9 @@
 	import { DirtyState, MARK_CLEAN_KEY } from '$lib/DirtyState';
 	import { WordCount } from '$lib/WordCount';
 	import { SearchHighlight, searchHighlightKey } from '$lib/SearchHighlight';
+	import { SourceOnFocus } from '$lib/SourceOnFocus';
 	import Image from '@tiptap/extension-image';
+	import Heading from '@tiptap/extension-heading';
 	import type { NodeViewRenderer } from '@tiptap/core';
 	import { get } from 'svelte/store';
 	import { document as doc } from '$lib/stores/document';
@@ -27,6 +29,36 @@
 	import { headings } from '$lib/stores/headings';
 
 	const lowlight = createLowlight(common);
+
+	/** Heading NodeView: shows `# / ## / ###` prefix only when cursor is inside the block.
+	 *  Uses the native h1/h2/h3 element so existing CSS still applies for the inactive state.
+	 *  The `block-active` class (added by the SourceOnFocus decoration plugin) triggers CSS
+	 *  that shows the prefix and collapses the heading font to body size. */
+	function makeHeadingNodeView(level: 1 | 2 | 3): NodeViewRenderer {
+		return ({ node }) => {
+			const dom = document.createElement(`h${level}`);
+
+			const prefix = document.createElement('span');
+			prefix.className = 'md-prefix';
+			prefix.setAttribute('contenteditable', 'false');
+			prefix.textContent = '#'.repeat(level) + ' ';
+
+			const contentDOM = document.createElement('span');
+
+			dom.appendChild(prefix);
+			dom.appendChild(contentDOM);
+
+			return {
+				dom,
+				contentDOM,
+				update(updatedNode) {
+					return (
+						updatedNode.type.name === 'heading' && updatedNode.attrs.level === level
+					);
+				}
+			};
+		};
+	}
 
 	/** Convert an image src to an asset:// URL for Tauri rendering.
 	 *  - Relative path  → resolved against the open file's directory
@@ -121,7 +153,13 @@
 		editor = new Editor({
 			element: editorEl,
 			extensions: [
-				StarterKit.configure({ codeBlock: false, strike: false }),
+				StarterKit.configure({ codeBlock: false, strike: false, heading: false }),
+				Heading.configure({ levels: [1, 2, 3] }).extend({
+					addNodeView() {
+						return (props) => makeHeadingNodeView(props.node.attrs.level as 1 | 2 | 3)(props);
+					}
+				}),
+				SourceOnFocus,
 				Headings((h) => headings.set(h)),
 				DirtyState((isDirty) => doc.markDirty(isDirty)),
 				WordCount((count) => wordCount.set(count)),
@@ -259,6 +297,30 @@
 		font-size: 1.25em;
 		font-weight: 600;
 		margin: 0.5em 0;
+	}
+
+	/* Source-on-focus: hide the markdown prefix when cursor is elsewhere */
+	:global(.tiptap h1 .md-prefix),
+	:global(.tiptap h2 .md-prefix),
+	:global(.tiptap h3 .md-prefix) {
+		display: none;
+		font-size: 1rem;
+		font-weight: normal;
+		color: var(--color-text-muted);
+		user-select: none;
+	}
+
+	/* When cursor is inside the heading, collapse to body size and show prefix */
+	:global(.tiptap h1.block-active),
+	:global(.tiptap h2.block-active),
+	:global(.tiptap h3.block-active) {
+		font-size: 1rem;
+		font-weight: normal;
+	}
+	:global(.tiptap h1.block-active .md-prefix),
+	:global(.tiptap h2.block-active .md-prefix),
+	:global(.tiptap h3.block-active .md-prefix) {
+		display: inline;
 	}
 	:global(.tiptap p) {
 		margin: 0.5em 0;
