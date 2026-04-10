@@ -21,16 +21,33 @@
 	import { SearchHighlight, searchHighlightKey } from '$lib/SearchHighlight';
 	import Image from '@tiptap/extension-image';
 	import type { NodeViewRenderer } from '@tiptap/core';
+	import { get } from 'svelte/store';
+	import { document as doc } from '$lib/stores/document';
+	import { wordCount } from '$lib/stores/wordCount';
+	import { headings } from '$lib/stores/headings';
 
-	// Custom NodeView that renders a styled fallback when an image fails to load.
-	// Shows the alt text (or decoded filename from the src) so the user knows what
-	// content is missing even when the asset URL can't be resolved.
+	const lowlight = createLowlight(common);
+
+	/** Convert a relative image src to an asset:// URL using the currently open file's
+	 *  directory. Absolute/http/data URLs are returned unchanged. This runs only inside
+	 *  the NodeView (render layer) so the ProseMirror model always keeps the original src. */
+	function toDisplaySrc(src: string): string {
+		if (!src || /^(https?|asset|data):/.test(src) || src.startsWith('/')) return src;
+		const filePath = get(doc).filePath;
+		if (!filePath) return src;
+		const dir = filePath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
+		return `asset://localhost/${encodeURIComponent(`${dir}/${src}`)}`;
+	}
+
+	// NodeView renders images via toDisplaySrc but keeps the raw src in the ProseMirror
+	// model, so tiptap-markdown serialises back to the original markdown unchanged.
 	const imageNodeView: NodeViewRenderer = ({ node }) => {
 		const wrapper = document.createElement('span');
 		wrapper.className = 'image-nodeview';
 
 		const img = document.createElement('img');
-		img.src = node.attrs.src ?? '';
+		const rawSrc: string = node.attrs.src ?? '';
+		img.src = toDisplaySrc(rawSrc);
 		img.alt = node.attrs.alt ?? '';
 		if (node.attrs.title) img.title = node.attrs.title;
 
@@ -38,10 +55,7 @@
 			img.style.display = 'none';
 			const fb = document.createElement('span');
 			fb.className = 'image-fallback';
-			// Show alt text; fall back to the filename decoded from the src URL
-			const label =
-				img.alt ||
-				decodeURIComponent((img.src.split('/').pop() ?? 'image').replace(/\?.*$/, ''));
+			const label = img.alt || decodeURIComponent(rawSrc.split('/').pop() ?? 'image');
 			fb.textContent = `\uD83D\uDDBC\uFE0F ${label}`;
 			wrapper.appendChild(fb);
 		});
@@ -52,17 +66,13 @@
 			dom: wrapper,
 			update(updatedNode) {
 				if (updatedNode.type.name !== 'image') return false;
-				img.src = updatedNode.attrs.src ?? '';
+				const newSrc: string = updatedNode.attrs.src ?? '';
+				img.src = toDisplaySrc(newSrc);
 				img.alt = updatedNode.attrs.alt ?? '';
 				return true;
 			}
 		};
 	};
-	import { document as doc } from '$lib/stores/document';
-	import { wordCount } from '$lib/stores/wordCount';
-	import { headings } from '$lib/stores/headings';
-
-	const lowlight = createLowlight(common);
 
 	interface Props {
 		content: string;

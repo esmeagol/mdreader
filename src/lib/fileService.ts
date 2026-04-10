@@ -1,7 +1,6 @@
 import { document as doc } from './stores/document';
 import { recentFiles } from './stores/recentFiles';
 import { getRichHandle, getSourceHandle, getActiveContent } from './editor';
-import { resolveImages, unresolveImages } from './utils';
 
 let tauriInvoke: (<T>(cmd: string, args: Record<string, unknown>) => Promise<T>) | null = null;
 
@@ -59,13 +58,13 @@ export async function openFile(path?: string): Promise<void> {
 		if (!picked || Array.isArray(picked)) return;
 		selected = picked;
 	}
-	const raw = await invoke<string>('open_file', { path: selected });
-	const content = resolveImages(raw, selected);
-	// Push content to both editors before updating the store so handles are
-	// populated by the time any reactive effects fire.
+	const content = await invoke<string>('open_file', { path: selected });
+	// Set the file path FIRST so the image NodeView's get(doc).filePath is already
+	// populated when setContent triggers node rendering — otherwise relative image
+	// srcs can't be resolved to asset:// URLs.
+	doc.load(selected);
 	getRichHandle()?.setContent(content, { markClean: true });
 	getSourceHandle()?.setContent(content);
-	doc.load(selected);
 	recentFiles.prepend(selected);
 }
 
@@ -76,7 +75,7 @@ export async function save(): Promise<void> {
 		await saveAs();
 		return;
 	}
-	const content = unresolveImages(getActiveContent(), filePath);
+	const content = getActiveContent();
 	try {
 		await invoke<void>('save_file', { content });
 		doc.markSaved();
@@ -90,7 +89,7 @@ export async function saveAs(): Promise<void> {
 	const { save: saveDialog } = await import('@tauri-apps/plugin-dialog');
 	const path = await saveDialog({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
 	if (!path || Array.isArray(path)) return;
-	const content = unresolveImages(getActiveContent(), path);
+	const content = getActiveContent();
 	try {
 		await invoke<void>('set_current_file', { path });
 		await invoke<void>('save_file', { content });

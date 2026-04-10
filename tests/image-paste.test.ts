@@ -12,8 +12,10 @@ async function loadContent(
 			const { getRichHandle } = await import('/src/lib/editor.ts');
 			// @ts-expect-error Vite browser runtime import path
 			const { document } = await import('/src/lib/stores/document.ts');
-			getRichHandle()?.setContent(md, { markClean: true });
+			// Load path FIRST so the NodeView's get(doc).filePath is correct when
+			// setContent triggers node rendering.
 			document.load(path);
+			getRichHandle()?.setContent(md, { markClean: true });
 		},
 		{ md: markdown, path: filePath }
 	);
@@ -47,67 +49,36 @@ test('image markdown renders as img element', async ({ page }) => {
 	await expect(page.locator('[data-testid="editor-area"] .tiptap img')).toHaveCount(1);
 });
 
-// Simulates the exact flow that happens when fileService.openFile() loads a file:
-// resolveImages rewrites relative src → asset:// URL, setContent loads it into TipTap.
-// This test verifies that the asset:// src survives the full parse→render round-trip.
-test('resolveImages output sets correct asset:// src on img element', async ({ page }) => {
+// The NodeView resolves relative src to asset:// at render time using the open file path.
+// The ProseMirror model keeps the original "Redis1.png" so source mode and saving are clean.
+test('relative image src is resolved to asset:// in the rendered img element', async ({ page }) => {
 	await page.goto('/');
 
 	const filePath = '/Users/test/Notes/Redis.md';
-	const rawMarkdown = '# Redis\n\n![Cache diagram](Redis1.png)\n\nSome text';
-
-	// Apply resolveImages exactly as fileService does, then load into editor
-	const resolvedMarkdown = await page.evaluate(
-		async ({ md, fp }) => {
-			// @ts-expect-error Vite browser runtime import path
-			const { resolveImages } = await import('/src/lib/utils.ts');
-			return resolveImages(md, fp);
-		},
-		{ md: rawMarkdown, fp: filePath }
-	);
-
-	// Tauri asset handler strips the leading "/" from the URL path then decodes.
-	// So the full absolute path must be encodeURIComponent'd as one token.
-	const expectedEncoded = encodeURIComponent('/Users/test/Notes/Redis1.png');
-	expect(resolvedMarkdown).toContain(`asset://localhost/${expectedEncoded}`);
-
-	await loadContent(page, resolvedMarkdown, filePath);
+	// Raw markdown — no asset:// URL, just a plain relative filename
+	await loadContent(page, '# Redis\n\n![Cache diagram](Redis1.png)', filePath);
 
 	const img = page.locator('[data-testid="editor-area"] .tiptap img');
 	await expect(img).toHaveCount(1);
 
-	// The src attribute must contain the asset:// URL — this is what Tauri will serve
+	// The NodeView must have resolved the src to an asset:// URL for Tauri to serve it
 	const src = await img.getAttribute('src');
-	expect(src).toContain('asset://localhost');
-	expect(src).toContain('Redis1.png');
+	const expected = `asset://localhost/${encodeURIComponent('/Users/test/Notes/Redis1.png')}`;
+	expect(src).toBe(expected);
 });
 
-// Verify that paths with spaces survive the full encode→TipTap→src round-trip
-test('resolveImages encodes full path so spaces become %20 in img src', async ({ page }) => {
+// Spaces in directory names must be encoded so the WebView URL is valid
+test('NodeView encodes spaces in path when resolving to asset:// URL', async ({ page }) => {
 	await page.goto('/');
 
 	const filePath = '/Interview Prep/System Design/Redis.md';
-	const rawMarkdown = '![alt](Redis1.png)';
-
-	const resolvedMarkdown = await page.evaluate(
-		async ({ md, fp }) => {
-			// @ts-expect-error Vite browser runtime import path
-			const { resolveImages } = await import('/src/lib/utils.ts');
-			return resolveImages(md, fp);
-		},
-		{ md: rawMarkdown, fp: filePath }
-	);
-
-	// Full absolute path encoded as one token — slashes become %2F, spaces %20
-	const expected = `asset://localhost/${encodeURIComponent('/Interview Prep/System Design/Redis1.png')}`;
-	expect(resolvedMarkdown).toBe(`![alt](${expected})`);
-
-	await loadContent(page, resolvedMarkdown, filePath);
+	await loadContent(page, '![alt](Redis1.png)', filePath);
 
 	const img = page.locator('[data-testid="editor-area"] .tiptap img');
 	await expect(img).toHaveCount(1);
 
 	const src = await img.getAttribute('src');
-	// src must not contain bare spaces — Tauri's URL parser would reject them
+	const expected = `asset://localhost/${encodeURIComponent('/Interview Prep/System Design/Redis1.png')}`;
+	expect(src).toBe(expected);
 	expect(src).not.toContain(' ');
 });
