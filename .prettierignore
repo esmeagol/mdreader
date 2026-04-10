@@ -11,3 +11,9 @@ bun.lockb
 # Rust build artifacts
 src-tauri/target/
 src-tauri/gen/
+
+# Coverage reports (generated, not source)
+coverage/
+
+# Test fixtures (machine-generated, not handwritten)
+tests/fixtures/large.md
