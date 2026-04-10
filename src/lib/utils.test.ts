@@ -47,6 +47,10 @@ describe('documentDisplayName', () => {
 	it('returns final segment for Windows-style paths', () => {
 		expect(documentDisplayName('C:\\Users\\me\\doc.md')).toBe('doc.md');
 	});
+
+	it('returns Untitled for a bare root path that yields no segments', () => {
+		expect(documentDisplayName('/')).toBe('Untitled');
+	});
 });
 
 describe('formatTitle', () => {
