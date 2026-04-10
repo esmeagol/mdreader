@@ -73,4 +73,19 @@ mod tests {
         let loaded = RecentFiles::load(&dir.path().to_path_buf());
         assert_eq!(loaded.list()[0], "/test.md");
     }
+
+    #[test]
+    fn load_returns_default_on_malformed_json() {
+        let dir = tempdir().unwrap();
+        std::fs::write(dir.path().join("recent_files.json"), b"not valid json").unwrap();
+        let loaded = RecentFiles::load(&dir.path().to_path_buf());
+        assert_eq!(loaded.list().len(), 0);
+    }
+
+    #[test]
+    fn load_returns_default_when_file_missing() {
+        let dir = tempdir().unwrap();
+        let loaded = RecentFiles::load(&dir.path().to_path_buf());
+        assert_eq!(loaded.list().len(), 0);
+    }
 }
