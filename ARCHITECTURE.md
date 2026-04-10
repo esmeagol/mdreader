@@ -109,15 +109,36 @@ app-level shortcuts (Cmd+/) can toggle it.
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.metaKey && !e.shiftKey) {
-			if (e.key === 'o') { e.preventDefault(); openFile(); }
-			if (e.key === 's') { e.preventDefault(); save(); }
-			if (e.key === 'n') { e.preventDefault(); newFile(); }
-			if (e.key === '/') { e.preventDefault(); editorMode = editorMode === 'rich' ? 'source' : 'rich'; }
+			if (e.key === 'o') {
+				e.preventDefault();
+				openFile();
+			}
+			if (e.key === 's') {
+				e.preventDefault();
+				save();
+			}
+			if (e.key === 'n') {
+				e.preventDefault();
+				newFile();
+			}
+			if (e.key === '/') {
+				e.preventDefault();
+				editorMode = editorMode === 'rich' ? 'source' : 'rich';
+			}
 		}
 		if (e.metaKey && e.shiftKey) {
-			if (e.key === 'S') { e.preventDefault(); saveAs(); }
-			if (e.key === 'F') { e.preventDefault(); isDistractionFree = !isDistractionFree; }
-			if (e.key === 'L') { e.preventDefault(); sidebarVisible = !sidebarVisible; }
+			if (e.key === 'S') {
+				e.preventDefault();
+				saveAs();
+			}
+			if (e.key === 'F') {
+				e.preventDefault();
+				isDistractionFree = !isDistractionFree;
+			}
+			if (e.key === 'L') {
+				e.preventDefault();
+				sidebarVisible = !sidebarVisible;
+			}
 		}
 	}
 </script>
@@ -151,10 +172,10 @@ on every CodeMirror change. Rich mode dirty tracking is owned by the `DirtyState
 
 ```svelte
 <div class:hidden={editorMode !== 'rich'}>
-	<EditorPane content="" onChange={handleChange} onReady={(h) => richHandle = h} {theme} />
+	<EditorPane content="" onChange={handleChange} onReady={(h) => (richHandle = h)} {theme} />
 </div>
 <div class:hidden={editorMode !== 'source'}>
-	<SourcePane content="" onChange={handleChange} onReady={(h) => sourceHandle = h} {theme} />
+	<SourcePane content="" onChange={handleChange} onReady={(h) => (sourceHandle = h)} {theme} />
 </div>
 ```
 
@@ -180,7 +201,9 @@ const handle: EditorHandle = {
 			editor.view.dispatch(editor.state.tr.setMeta(MARK_CLEAN_KEY, true));
 		}
 	},
-	getContent(): string { return getMarkdown(editor); },
+	getContent(): string {
+		return getMarkdown(editor);
+	},
 	markSaved() {
 		editor.view.dispatch(editor.state.tr.setMeta(MARK_CLEAN_KEY, true));
 	}
@@ -269,14 +292,14 @@ interface DocumentState {
 
 Named operations:
 
-| Operation | When called | Effect |
-| --- | --- | --- |
-| `load(filePath)` | After a file is opened | Sets path, clears dirty/error |
-| `markDirty(bool)` | DirtyState plugin (rich) or handleChange (source) | Sets isDirty |
-| `markSaved()` | After successful save | Clears dirty, records timestamp, clears error |
-| `setFilePath(path)` | After saveAs picks a new path | Updates path without touching isDirty |
-| `markSaveError(msg)` | After failed save | Sets saveError |
-| `reset()` | Cmd+N | Returns to empty state |
+| Operation            | When called                                       | Effect                                        |
+| -------------------- | ------------------------------------------------- | --------------------------------------------- |
+| `load(filePath)`     | After a file is opened                            | Sets path, clears dirty/error                 |
+| `markDirty(bool)`    | DirtyState plugin (rich) or handleChange (source) | Sets isDirty                                  |
+| `markSaved()`        | After successful save                             | Clears dirty, records timestamp, clears error |
+| `setFilePath(path)`  | After saveAs picks a new path                     | Updates path without touching isDirty         |
+| `markSaveError(msg)` | After failed save                                 | Sets saveError                                |
+| `reset()`            | Cmd+N                                             | Returns to empty state                        |
 
 ### `headings` and `wordCount` stores
 
@@ -305,13 +328,13 @@ always returns content from the visible pane.
 
 There is no `ui` store. Each piece of UI state lives as close to its owner as possible.
 
-| State               | Owner              | Shared via                              |
-| ------------------- | ------------------ | --------------------------------------- |
-| `sidebarVisible`    | `+page.svelte`     | Prop to AppShell                        |
-| `isDistractionFree` | `+page.svelte`     | Prop to AppShell                        |
-| `editorMode`        | `+page.svelte`     | Prop to EditorContainer                 |
-| `theme`             | `+layout.svelte`   | `data-theme` on `<html>` — CSS cascades |
-| `fontSize`          | `+page.svelte`     | CSS variable on `<html>` — CSS cascades |
+| State               | Owner            | Shared via                              |
+| ------------------- | ---------------- | --------------------------------------- |
+| `sidebarVisible`    | `+page.svelte`   | Prop to AppShell                        |
+| `isDistractionFree` | `+page.svelte`   | Prop to AppShell                        |
+| `editorMode`        | `+page.svelte`   | Prop to EditorContainer                 |
+| `theme`             | `+layout.svelte` | `data-theme` on `<html>` — CSS cascades |
+| `fontSize`          | `+page.svelte`   | CSS variable on `<html>` — CSS cascades |
 
 ---
 
@@ -435,24 +458,27 @@ Cmd+Shift+F → isDistractionFree toggles → prop to AppShell → CSS class
 
 No mocks. Each layer is tested in its natural environment.
 
-| Layer | Tool | What is tested |
-| --- | --- | --- |
-| Pure functions | Vitest | `formatWordCount`, `formatTitle`, heading extraction, markdown round-trips |
-| Document store | Vitest | All named operations and state transitions |
-| Rust file I/O | `cargo test` + real tempfiles | `read_markdown_file`, `write_markdown_file`, validation |
-| UI behaviour | Playwright + Vite dev server | Rendering, editing, mode toggle, dirty state, layout, shortcuts |
-| Tauri `invoke` wiring | Not unit tested — kept thin | Reviewed; tested via manual/integration run |
+| Layer                 | Tool                          | What is tested                                                             |
+| --------------------- | ----------------------------- | -------------------------------------------------------------------------- |
+| Pure functions        | Vitest                        | `formatWordCount`, `formatTitle`, heading extraction, markdown round-trips |
+| Document store        | Vitest                        | All named operations and state transitions                                 |
+| Rust file I/O         | `cargo test` + real tempfiles | `read_markdown_file`, `write_markdown_file`, validation                    |
+| UI behaviour          | Playwright + Vite dev server  | Rendering, editing, mode toggle, dirty state, layout, shortcuts            |
+| Tauri `invoke` wiring | Not unit tested — kept thin   | Reviewed; tested via manual/integration run                                |
 
 **Test helper pattern** — Playwright tests that need a file loaded use a two-step evaluate:
 
 ```typescript
 async function loadContent(page, markdown, filePath) {
-	await page.evaluate(async ({ md, path }) => {
-		const { getRichHandle } = await import('/src/lib/editor.ts');
-		const { document } = await import('/src/lib/stores/document.ts');
-		getRichHandle()?.setContent(md, { markClean: true });
-		document.load(path);
-	}, { md: markdown, path: filePath });
+	await page.evaluate(
+		async ({ md, path }) => {
+			const { getRichHandle } = await import('/src/lib/editor.ts');
+			const { document } = await import('/src/lib/stores/document.ts');
+			getRichHandle()?.setContent(md, { markClean: true });
+			document.load(path);
+		},
+		{ md: markdown, path: filePath }
+	);
 }
 ```
 

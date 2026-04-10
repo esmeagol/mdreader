@@ -142,11 +142,7 @@ test('typing marks document dirty and updates title', async ({ page }) => {
 
 test('markdown table renders as table in rich mode', async ({ page }) => {
 	await page.goto('/');
-	await loadContent(
-		page,
-		'| Name | Role |\n| --- | --- |\n| Alice | Engineer |',
-		'/tmp/table.md'
-	);
+	await loadContent(page, '| Name | Role |\n| --- | --- |\n| Alice | Engineer |', '/tmp/table.md');
 
 	const editor = page.locator('[data-testid="editor-area"] .tiptap');
 	await expect(editor.locator('table')).toBeVisible();

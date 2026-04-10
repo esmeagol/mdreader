@@ -31,7 +31,10 @@
 					markdown(),
 					...(theme === 'dark' ? [oneDark] : []),
 					EditorView.updateListener.of((update) => {
-						if (update.docChanged && !update.transactions.some((tr) => tr.annotation(externalChange))) {
+						if (
+							update.docChanged &&
+							!update.transactions.some((tr) => tr.annotation(externalChange))
+						) {
 							onChange(update.state.doc.toString());
 						}
 					})

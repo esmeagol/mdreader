@@ -7,7 +7,14 @@
 	import EditorContainer from '$lib/components/EditorContainer.svelte';
 	import { document as doc } from '$lib/stores/document';
 	import { themePreference } from '$lib/stores/themePreference';
-	import { isTauriRuntime, loadRecentFiles, openFile, save, saveAs, newFile } from '$lib/fileService';
+	import {
+		isTauriRuntime,
+		loadRecentFiles,
+		openFile,
+		save,
+		saveAs,
+		newFile
+	} from '$lib/fileService';
 
 	let sidebarVisible = $state(true);
 	let isDistractionFree = $state(false);

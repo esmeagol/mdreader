@@ -64,20 +64,10 @@
 {/if}
 
 <div class:hidden={editorMode !== 'rich'} class="pane-wrap">
-	<EditorPane
-		content=""
-		onChange={handleChange}
-		onReady={(h) => (richHandle = h)}
-		{theme}
-	/>
+	<EditorPane content="" onChange={handleChange} onReady={(h) => (richHandle = h)} {theme} />
 </div>
 <div class:hidden={editorMode !== 'source'} class="pane-wrap">
-	<SourcePane
-		content=""
-		onChange={handleChange}
-		onReady={(h) => (sourceHandle = h)}
-		{theme}
-	/>
+	<SourcePane content="" onChange={handleChange} onReady={(h) => (sourceHandle = h)} {theme} />
 </div>
 
 <style>

@@ -31,17 +31,17 @@ file I/O lives in `src/lib/fileService.ts`; `+page.svelte` calls named functions
 
 Key files that supersede their day-step equivalents:
 
-| File | Supersedes |
-| --- | --- |
-| `src/lib/stores/document.ts` | Day 3 store (no `content`, no `update()`) |
-| `src/lib/editor.ts` | Day 4 EditorHandle (module singletons, `getActiveContent`) |
-| `src/lib/fileService.ts` | Day 5–8 inline `invoke` in `+page.svelte` |
-| `src/lib/DirtyState.ts` | Day 6 `emitUpdate: false` / suppress-flag approach |
-| `src/lib/WordCount.ts` | Day 6 word count via `wordCount` store (not document `content`) |
-| `src/lib/Headings.ts` | Day 10 separate `HeadingId.ts` + heading extraction |
-| `src/lib/components/EditorContainer.svelte` | Day 4–8 EditorContainer (no local content state) |
-| `src/lib/components/EditorPane.svelte` | Day 4 EditorPane (PM plugins, `onReady` callback) |
-| `src/lib/components/SourcePane.svelte` | Day 8 SourcePane (CM Annotation, `onReady` callback) |
+| File                                        | Supersedes                                                      |
+| ------------------------------------------- | --------------------------------------------------------------- |
+| `src/lib/stores/document.ts`                | Day 3 store (no `content`, no `update()`)                       |
+| `src/lib/editor.ts`                         | Day 4 EditorHandle (module singletons, `getActiveContent`)      |
+| `src/lib/fileService.ts`                    | Day 5–8 inline `invoke` in `+page.svelte`                       |
+| `src/lib/DirtyState.ts`                     | Day 6 `emitUpdate: false` / suppress-flag approach              |
+| `src/lib/WordCount.ts`                      | Day 6 word count via `wordCount` store (not document `content`) |
+| `src/lib/Headings.ts`                       | Day 10 separate `HeadingId.ts` + heading extraction             |
+| `src/lib/components/EditorContainer.svelte` | Day 4–8 EditorContainer (no local content state)                |
+| `src/lib/components/EditorPane.svelte`      | Day 4 EditorPane (PM plugins, `onReady` callback)               |
+| `src/lib/components/SourcePane.svelte`      | Day 8 SourcePane (CM Annotation, `onReady` callback)            |
 
 ### Tauri capabilities
 
@@ -126,12 +126,15 @@ Tests that need a file loaded use a two-step evaluate mirroring `fileService.ope
 
 ```typescript
 async function loadContent(page, markdown, filePath) {
-	await page.evaluate(async ({ md, path }) => {
-		const { getRichHandle } = await import('/src/lib/editor.ts');
-		const { document } = await import('/src/lib/stores/document.ts');
-		getRichHandle()?.setContent(md, { markClean: true });
-		document.load(path);
-	}, { md: markdown, path: filePath });
+	await page.evaluate(
+		async ({ md, path }) => {
+			const { getRichHandle } = await import('/src/lib/editor.ts');
+			const { document } = await import('/src/lib/stores/document.ts');
+			getRichHandle()?.setContent(md, { markClean: true });
+			document.load(path);
+		},
+		{ md: markdown, path: filePath }
+	);
 }
 ```
 

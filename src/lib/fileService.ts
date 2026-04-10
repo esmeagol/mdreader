@@ -6,7 +6,10 @@ let tauriInvoke: (<T>(cmd: string, args: Record<string, unknown>) => Promise<T>)
 
 export function isTauriRuntime(): boolean {
 	// Match @tauri-apps/api/core `isTauri()` — not `__TAURI_INTERNALS__`, which can exist in dev without IPC.
-	return typeof globalThis !== 'undefined' && Boolean((globalThis as unknown as { isTauri?: boolean }).isTauri);
+	return (
+		typeof globalThis !== 'undefined' &&
+		Boolean((globalThis as unknown as { isTauri?: boolean }).isTauri)
+	);
 }
 
 async function initTauri(): Promise<void> {

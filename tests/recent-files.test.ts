@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-	test('clicking a recent file opens that file directly', async ({ page }) => {
+test('clicking a recent file opens that file directly', async ({ page }) => {
 	await page.addInitScript(() => {
 		(window as Window & { isTauri?: boolean }).isTauri = true;
 
