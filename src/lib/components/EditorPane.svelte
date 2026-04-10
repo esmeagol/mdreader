@@ -19,6 +19,7 @@
 	import { DirtyState, MARK_CLEAN_KEY } from '$lib/DirtyState';
 	import { WordCount } from '$lib/WordCount';
 	import { SearchHighlight, searchHighlightKey } from '$lib/SearchHighlight';
+	import Image from '@tiptap/extension-image';
 	import { document as doc } from '$lib/stores/document';
 	import { wordCount } from '$lib/stores/wordCount';
 	import { headings } from '$lib/stores/headings';
@@ -37,6 +38,7 @@
 	let editorEl: HTMLElement;
 	let editor: Editor;
 	let linkClickHandler: ((e: MouseEvent) => void) | undefined;
+	let pasteHandlerRef: ((e: ClipboardEvent) => Promise<void>) | undefined;
 
 	function buildEditorProps(themeVal: 'light' | 'dark'): EditorProps {
 		return {
@@ -76,7 +78,8 @@
 				TableRow,
 				TableHeader,
 				TableCell,
-				SearchHighlight
+				SearchHighlight,
+				Image
 			],
 			content,
 			editorProps: buildEditorProps(theme),
@@ -113,6 +116,36 @@
 		setRichHandle(handle);
 		onReady?.(handle);
 
+		pasteHandlerRef = async (e: ClipboardEvent) => {
+			const items = Array.from(e.clipboardData?.items ?? []);
+			const imageItem = items.find((i) => i.type.startsWith('image/'));
+			if (!imageItem) return;
+			e.preventDefault();
+
+			// Only available in Tauri context
+			if (!('__TAURI_INTERNALS__' in window)) return;
+
+			const blob = imageItem.getAsFile();
+			if (!blob) return;
+
+			const arrayBuffer = await blob.arrayBuffer();
+			const bytes = Array.from(new Uint8Array(arrayBuffer));
+			const ext = blob.type.split('/')[1] ?? 'png';
+			const filename = `pasted-${Date.now()}.${ext}`;
+
+			const { appDataDir } = await import('@tauri-apps/api/path');
+			const dir = await appDataDir();
+			const path = `${dir}${filename}`;
+
+			const { invoke } = await import('@tauri-apps/api/core');
+			const savedPath = await invoke<string>('save_image', { path, bytes });
+
+			// Convert to asset:// URL for loading local files
+			const assetUrl = `asset://localhost${savedPath}`;
+			editor.chain().focus().setImage({ src: assetUrl }).run();
+		};
+		editorEl.addEventListener('paste', pasteHandlerRef);
+
 		linkClickHandler = async (e: MouseEvent) => {
 			const anchor = (e.target as HTMLElement).closest('a');
 			if (!anchor) return;
@@ -137,6 +170,7 @@
 	onDestroy(() => {
 		setRichHandle(null);
 		if (linkClickHandler) editorEl?.removeEventListener('click', linkClickHandler);
+		if (pasteHandlerRef) editorEl?.removeEventListener('paste', pasteHandlerRef);
 		editor?.destroy();
 	});
 </script>
