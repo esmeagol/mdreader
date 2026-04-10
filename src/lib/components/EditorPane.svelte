@@ -286,17 +286,28 @@
 	:global(.tiptap h1) {
 		font-size: 2em;
 		font-weight: 700;
-		margin: 0.5em 0;
+		margin: 1em 0 0.4em;
+		padding-bottom: 0.25em;
+		border-bottom: 1px solid var(--color-border);
 	}
 	:global(.tiptap h2) {
 		font-size: 1.5em;
 		font-weight: 600;
-		margin: 0.5em 0;
+		margin: 0.9em 0 0.35em;
+		padding-bottom: 0.2em;
+		border-bottom: 1px solid var(--color-border);
 	}
 	:global(.tiptap h3) {
 		font-size: 1.25em;
 		font-weight: 600;
-		margin: 0.5em 0;
+		margin: 0.8em 0 0.3em;
+	}
+
+	/* Remove the border while in source-on-focus (editing) mode */
+	:global(.tiptap h1.block-active),
+	:global(.tiptap h2.block-active) {
+		border-bottom: none;
+		padding-bottom: 0;
 	}
 
 	/* Source-on-focus: hide the markdown prefix when cursor is elsewhere */
@@ -316,6 +327,8 @@
 	:global(.tiptap h3.block-active) {
 		font-size: 1rem;
 		font-weight: normal;
+		margin-top: 0;
+		margin-bottom: 0;
 	}
 	:global(.tiptap h1.block-active .md-prefix),
 	:global(.tiptap h2.block-active .md-prefix),
