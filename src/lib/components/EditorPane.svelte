@@ -28,11 +28,19 @@
 
 	const lowlight = createLowlight(common);
 
-	/** Convert a relative image src to an asset:// URL using the currently open file's
-	 *  directory. Absolute/http/data URLs are returned unchanged. This runs only inside
-	 *  the NodeView (render layer) so the ProseMirror model always keeps the original src. */
+	/** Convert an image src to an asset:// URL for Tauri rendering.
+	 *  - Relative path  → resolved against the open file's directory
+	 *  - Absolute path  → used directly (covers pasted images saved to app-data)
+	 *  - http/asset/data → returned unchanged
+	 *  Runs only in the NodeView (render layer); the ProseMirror model always keeps
+	 *  the original src so tiptap-markdown serialises it back to disk unchanged. */
 	function toDisplaySrc(src: string): string {
-		if (!src || /^(https?|asset|data):/.test(src) || src.startsWith('/')) return src;
+		if (!src || /^(https?|asset|data):/.test(src)) return src;
+		if (src.startsWith('/')) {
+			// Absolute filesystem path — encode as single token for the asset handler
+			return `asset://localhost/${encodeURIComponent(src)}`;
+		}
+		// Relative path — resolve against the currently open file's directory
 		const filePath = get(doc).filePath;
 		if (!filePath) return src;
 		const dir = filePath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
@@ -188,9 +196,9 @@
 			const { invoke } = await import('@tauri-apps/api/core');
 			const savedPath = await invoke<string>('save_image', { path, bytes });
 
-			// Convert to asset:// URL for loading local files
-			const assetUrl = `asset://localhost${savedPath}`;
-			editor.chain().focus().setImage({ src: assetUrl }).run();
+			// Store the absolute filesystem path in the model; the NodeView's
+			// toDisplaySrc() handles the asset:// URL conversion for rendering.
+			editor.chain().focus().setImage({ src: savedPath }).run();
 		};
 		editorEl.addEventListener('paste', pasteHandlerRef);
 
