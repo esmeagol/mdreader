@@ -50,6 +50,11 @@ jobs:
       - name: Build Tauri binary (debug)
         run: cd src-tauri && cargo build
 
+      - name: Report debug binary size
+        run: |
+          SIZE=$(stat -f%z src-tauri/target/debug/app 2>/dev/null || stat -c%s src-tauri/target/debug/app)
+          echo "Debug binary size: $((SIZE / 1024 / 1024)) MB (release target: <20 MB)"
+
       - name: Install Playwright browsers
         run: npx playwright install chromium --with-deps
 

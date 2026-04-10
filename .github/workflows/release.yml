@@ -41,6 +41,16 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
+      - name: Check release binary size (must be < 20 MB)
+        run: |
+          SIZE=$(stat -f%z src-tauri/target/release/app 2>/dev/null || stat -c%s src-tauri/target/release/app)
+          LIMIT=$((20 * 1024 * 1024))
+          echo "Release binary size: $((SIZE / 1024 / 1024)) MB (limit: 20 MB)"
+          if [ "$SIZE" -gt "$LIMIT" ]; then
+            echo "ERROR: release binary exceeds 20 MB limit"
+            exit 1
+          fi
+
       - name: Upload .dmg to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
