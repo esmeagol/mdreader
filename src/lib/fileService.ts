@@ -1,6 +1,7 @@
 import { document as doc } from './stores/document';
 import { recentFiles } from './stores/recentFiles';
 import { getRichHandle, getSourceHandle, getActiveContent } from './editor';
+import { resolveImages, unresolveImages } from './utils';
 
 let tauriInvoke: (<T>(cmd: string, args: Record<string, unknown>) => Promise<T>) | null = null;
 
@@ -58,7 +59,8 @@ export async function openFile(path?: string): Promise<void> {
 		if (!picked || Array.isArray(picked)) return;
 		selected = picked;
 	}
-	const content = await invoke<string>('open_file', { path: selected });
+	const raw = await invoke<string>('open_file', { path: selected });
+	const content = resolveImages(raw, selected);
 	// Push content to both editors before updating the store so handles are
 	// populated by the time any reactive effects fire.
 	getRichHandle()?.setContent(content, { markClean: true });
@@ -74,7 +76,7 @@ export async function save(): Promise<void> {
 		await saveAs();
 		return;
 	}
-	const content = getActiveContent();
+	const content = unresolveImages(getActiveContent(), filePath);
 	try {
 		await invoke<void>('save_file', { content });
 		doc.markSaved();
@@ -85,10 +87,10 @@ export async function save(): Promise<void> {
 
 export async function saveAs(): Promise<void> {
 	if (!isTauriRuntime()) return;
-	const content = getActiveContent();
 	const { save: saveDialog } = await import('@tauri-apps/plugin-dialog');
 	const path = await saveDialog({ filters: [{ name: 'Markdown', extensions: ['md'] }] });
 	if (!path || Array.isArray(path)) return;
+	const content = unresolveImages(getActiveContent(), path);
 	try {
 		await invoke<void>('set_current_file', { path });
 		await invoke<void>('save_file', { content });

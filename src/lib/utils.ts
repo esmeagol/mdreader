@@ -19,3 +19,27 @@ export function formatTitle(filePath: string | null, isDirty: boolean): string {
 	const base = documentDisplayName(filePath);
 	return isDirty ? `• ${base} — mdreader` : `${base} — mdreader`;
 }
+
+function fileDir(filePath: string): string {
+	return filePath.replace(/\\/g, '/').replace(/\/[^/]+$/, '');
+}
+
+const IMAGE_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+
+/** Rewrite relative image src attributes to asset:// URLs for Tauri rendering. */
+export function resolveImages(markdown: string, filePath: string): string {
+	const dir = fileDir(filePath);
+	return markdown.replace(IMAGE_RE, (match, alt, src) => {
+		if (/^(https?|asset|data):/.test(src) || src.startsWith('/')) return match;
+		return `![${alt}](asset://localhost${dir}/${src})`;
+	});
+}
+
+/** Reverse resolveImages — restore relative paths before saving to disk. */
+export function unresolveImages(markdown: string, filePath: string): string {
+	const prefix = `asset://localhost${fileDir(filePath)}/`;
+	return markdown.replace(IMAGE_RE, (match, alt, src) => {
+		if (!src.startsWith(prefix)) return match;
+		return `![${alt}](${src.slice(prefix.length)})`;
+	});
+}
