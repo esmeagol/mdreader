@@ -63,6 +63,9 @@
 	.distraction-free {
 		grid-template-columns: 0 1fr;
 	}
+	.distraction-free .zone-sidebar {
+		display: none;
+	}
 	.distraction-free .zone-status {
 		display: none;
 	}
