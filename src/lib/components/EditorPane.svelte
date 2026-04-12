@@ -158,7 +158,11 @@
 				StarterKit.configure({ codeBlock: false, strike: false, heading: false }),
 				Heading.configure({ levels: [1, 2, 3] }).extend({
 					addNodeView() {
-						return (props) => makeHeadingNodeView(props.node.attrs.level as 1 | 2 | 3)(props);
+						return (props) => {
+							const level = props.node.attrs.level;
+							const safeLevel: 1 | 2 | 3 = level === 1 || level === 2 || level === 3 ? level : 1;
+							return makeHeadingNodeView(safeLevel)(props);
+						};
 					}
 				}),
 				SourceOnFocus,
