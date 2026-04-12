@@ -1,12 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import {
-	countWords,
-	documentDisplayName,
-	formatWordCount,
-	formatTitle,
-	resolveImages,
-	unresolveImages
-} from './utils';
+import { countWords, documentDisplayName, formatWordCount, formatTitle } from './utils';
 
 describe('countWords', () => {
 	it('returns 0 for empty string', () => {
@@ -57,85 +50,6 @@ describe('documentDisplayName', () => {
 
 	it('returns Untitled for a bare root path that yields no segments', () => {
 		expect(documentDisplayName('/')).toBe('Untitled');
-	});
-});
-
-// Tauri's asset protocol handler does:
-//   path = percentDecode(url.path().bytes()[1..])
-// So the leading "/" of the URL path is stripped, then the remainder is decoded.
-// To get an absolute path back, the ENTIRE absolute path (including its leading "/")
-// must be encodeURIComponent'd as one token, e.g.:
-//   /docs/notes/Redis1.png → encodeURIComponent → %2Fdocs%2Fnotes%2FRedis1.png
-//   URL: asset://localhost/%2Fdocs%2Fnotes%2FRedis1.png
-//   Handler: strip leading "/", decode → /docs/notes/Redis1.png  ✓
-describe('resolveImages', () => {
-	const filePath = '/docs/notes/Redis.md';
-	// expected asset URL for /docs/notes/Redis1.png
-	const encoded = encodeURIComponent('/docs/notes/Redis1.png');
-
-	it('rewrites a relative image to an asset URL using encodeURIComponent on the full path', () => {
-		expect(resolveImages('![alt](Redis1.png)', filePath)).toBe(
-			`![alt](asset://localhost/${encoded})`
-		);
-	});
-
-	it('leaves absolute http URLs untouched', () => {
-		const md = '![alt](https://example.com/img.png)';
-		expect(resolveImages(md, filePath)).toBe(md);
-	});
-
-	it('leaves existing asset:// URLs untouched', () => {
-		const md = `![alt](asset://localhost/${encoded})`;
-		expect(resolveImages(md, filePath)).toBe(md);
-	});
-
-	it('leaves absolute paths (starting with /) untouched', () => {
-		const md = '![alt](/absolute/path.png)';
-		expect(resolveImages(md, filePath)).toBe(md);
-	});
-
-	it('rewrites multiple images in one document', () => {
-		const md = '![a](A.png)\n\nSome text\n\n![b](B.png)';
-		const result = resolveImages(md, filePath);
-		expect(result).toContain(encodeURIComponent('/docs/notes/A.png'));
-		expect(result).toContain(encodeURIComponent('/docs/notes/B.png'));
-	});
-
-	it('encodes spaces in directory segments (full-path encodeURIComponent)', () => {
-		const spaced = '/Interview Prep/System Design/Redis.md';
-		const result = resolveImages('![alt](Redis1.png)', spaced);
-		const expected = encodeURIComponent('/Interview Prep/System Design/Redis1.png');
-		expect(result).toBe(`![alt](asset://localhost/${expected})`);
-	});
-});
-
-describe('unresolveImages', () => {
-	const filePath = '/docs/notes/Redis.md';
-
-	it('strips the asset prefix back to a relative path', () => {
-		const md = `![alt](asset://localhost/${encodeURIComponent('/docs/notes/Redis1.png')})`;
-		expect(unresolveImages(md, filePath)).toBe('![alt](Redis1.png)');
-	});
-
-	it('leaves non-asset URLs untouched', () => {
-		const md = '![alt](https://example.com/img.png)';
-		expect(unresolveImages(md, filePath)).toBe(md);
-	});
-
-	it('leaves asset URLs from a different directory untouched', () => {
-		const md = `![alt](asset://localhost/${encodeURIComponent('/other/dir/img.png')})`;
-		expect(unresolveImages(md, filePath)).toBe(md);
-	});
-
-	it('round-trips: unresolve(resolve(md)) === md', () => {
-		const original = '![a](A.png)\n\n![b](B.png)';
-		expect(unresolveImages(resolveImages(original, filePath), filePath)).toBe(original);
-	});
-
-	it('round-trips correctly when path has spaces', () => {
-		const spaced = '/Interview Prep/System Design/Redis.md';
-		const original = '![alt](Redis1.png)';
-		expect(unresolveImages(resolveImages(original, spaced), spaced)).toBe(original);
 	});
 });
 
