@@ -21,6 +21,15 @@ test('Cmd+F again hides find bar', async ({ page }) => {
 	await expect(page.locator('[data-testid="find-bar"]')).toBeHidden();
 });
 
+test('✕ close button hides the find bar', async ({ page }) => {
+	await page.goto('/');
+	await waitForHydration(page);
+	await page.keyboard.press('Meta+f');
+	await expect(page.locator('[data-testid="find-bar"]')).toBeVisible();
+	await page.locator('[data-testid="find-bar"] .close-btn').click();
+	await expect(page.locator('[data-testid="find-bar"]')).toBeHidden();
+});
+
 test('Cmd+H shows find bar with replace visible', async ({ page }) => {
 	await page.goto('/');
 	await waitForHydration(page);

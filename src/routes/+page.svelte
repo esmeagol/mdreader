@@ -176,7 +176,16 @@
 	{#snippet toolbar()}<Toolbar />{/snippet}
 	{#snippet editor()}
 		<div data-testid="editor-area" class="editor-area">
-			<EditorContainer {editorMode} {theme} {showFindBar} {showReplace} />
+			<EditorContainer
+				{editorMode}
+				{theme}
+				{showFindBar}
+				{showReplace}
+				onCloseFindBar={() => {
+					showFindBar = false;
+					showReplace = false;
+				}}
+			/>
 		</div>
 	{/snippet}
 	{#snippet statusbar()}<StatusBar />{/snippet}

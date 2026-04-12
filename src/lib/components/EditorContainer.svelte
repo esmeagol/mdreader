@@ -10,9 +10,11 @@
 		theme: 'light' | 'dark';
 		showFindBar?: boolean;
 		showReplace?: boolean;
+		onCloseFindBar?: () => void;
 	}
 
-	let { editorMode, theme, showFindBar = false, showReplace = false }: Props = $props();
+	let { editorMode, theme, showFindBar = false, showReplace = false, onCloseFindBar }: Props =
+		$props();
 
 	let richHandle: EditorHandle | null = $state(null);
 	let sourceHandle: EditorHandle | null = $state(null);
@@ -59,7 +61,7 @@
 		onPrev={() => richHandle?.prevMatch()}
 		onReplaceOne={() => richHandle?.replaceOne()}
 		onReplaceAll={() => richHandle?.replaceAll()}
-		onClose={() => {}}
+		onClose={() => onCloseFindBar?.()}
 	/>
 {/if}
 
