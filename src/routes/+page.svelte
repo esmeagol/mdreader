@@ -95,10 +95,15 @@
 	onMount(() => {
 		void loadRecentFiles();
 
+		let isSaving = false;
 		const intervalId = window.setInterval(() => {
-			if (!autoSave) return;
+			if (!autoSave || isSaving) return;
 			const { isDirty, filePath } = doc.get();
-			if (isDirty && filePath) save();
+			if (!isDirty || !filePath) return;
+			isSaving = true;
+			save().finally(() => {
+				isSaving = false;
+			});
 		}, 30_000);
 
 		let unlisten: (() => void) | undefined;
