@@ -80,7 +80,9 @@ export async function save(): Promise<void> {
 		await invoke<void>('save_file', { content });
 		doc.markSaved();
 	} catch (e) {
-		doc.markSaveError(e instanceof Error ? e.message : String(e));
+		const msg = e instanceof Error ? e.message : String(e);
+		console.error('[mdreader] save failed:', msg);
+		doc.markSaveError(msg);
 	}
 }
 
@@ -96,7 +98,9 @@ export async function saveAs(): Promise<void> {
 		doc.setFilePath(path);
 		doc.markSaved();
 	} catch (e) {
-		doc.markSaveError(e instanceof Error ? e.message : String(e));
+		const msg = e instanceof Error ? e.message : String(e);
+		console.error('[mdreader] saveAs failed:', msg);
+		doc.markSaveError(msg);
 	}
 }
 
