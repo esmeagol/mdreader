@@ -19,6 +19,7 @@
 	import { DirtyState, MARK_CLEAN_KEY } from '$lib/DirtyState';
 	import { WordCount } from '$lib/WordCount';
 	import { SearchHighlight, searchHighlightKey } from '$lib/SearchHighlight';
+	import { TextSelection } from '@tiptap/pm/state';
 	import { SourceOnFocus } from '$lib/SourceOnFocus';
 	import Image from '@tiptap/extension-image';
 	import Heading from '@tiptap/extension-heading';
@@ -127,6 +128,7 @@
 	let editor: Editor;
 	let linkClickHandler: ((e: MouseEvent) => void) | undefined;
 	let pasteHandlerRef: ((e: ClipboardEvent) => Promise<void>) | undefined;
+	let replaceTerm = '';
 
 	function buildEditorProps(themeVal: 'light' | 'dark'): EditorProps {
 		return {
@@ -198,14 +200,59 @@
 				editor.view.dispatch(tr.setMeta(MARK_CLEAN_KEY, true));
 			},
 			setSearchTerm(term: string) {
-				const { state } = editor.view;
-				editor.view.dispatch(state.tr.setMeta(searchHighlightKey, { term }));
+				editor.view.dispatch(
+					editor.state.tr.setMeta(searchHighlightKey, { term, current: -1 })
+				);
 			},
-			setReplaceTerm(_term: string) {},
-			nextMatch() {},
-			prevMatch() {},
-			replaceOne() {},
-			replaceAll() {}
+			setReplaceTerm(term: string) {
+				replaceTerm = term;
+			},
+			nextMatch() {
+				const pluginState = searchHighlightKey.getState(editor.state);
+				if (!pluginState || !pluginState.matches.length) return;
+				const next = (pluginState.current + 1) % pluginState.matches.length;
+				const match = pluginState.matches[next];
+				const tr = editor.state.tr
+					.setMeta(searchHighlightKey, { current: next })
+					.setSelection(TextSelection.create(editor.state.doc, match.from, match.to));
+				editor.view.dispatch(tr);
+				editor.view.focus();
+			},
+			prevMatch() {
+				const pluginState = searchHighlightKey.getState(editor.state);
+				if (!pluginState || !pluginState.matches.length) return;
+				const prev =
+					(pluginState.current - 1 + pluginState.matches.length) % pluginState.matches.length;
+				const match = pluginState.matches[prev];
+				const tr = editor.state.tr
+					.setMeta(searchHighlightKey, { current: prev })
+					.setSelection(TextSelection.create(editor.state.doc, match.from, match.to));
+				editor.view.dispatch(tr);
+				editor.view.focus();
+			},
+			replaceOne() {
+				const pluginState = searchHighlightKey.getState(editor.state);
+				if (!pluginState || pluginState.current < 0 || !pluginState.matches.length) return;
+				const match = pluginState.matches[pluginState.current];
+				editor.view
+					.dispatch(
+						editor.state.tr
+							.replaceWith(match.from, match.to, editor.state.schema.text(replaceTerm))
+							.setMeta(searchHighlightKey, { current: pluginState.current })
+					);
+			},
+			replaceAll() {
+				if (!replaceTerm && replaceTerm !== '') return;
+				const pluginState = searchHighlightKey.getState(editor.state);
+				if (!pluginState || !pluginState.matches.length) return;
+				// Replace back-to-front so positions stay valid
+				let tr = editor.state.tr;
+				for (let i = pluginState.matches.length - 1; i >= 0; i--) {
+					const { from, to } = pluginState.matches[i];
+					tr = tr.replaceWith(from, to, editor.state.schema.text(replaceTerm));
+				}
+				editor.view.dispatch(tr);
+			}
 		};
 		setRichHandle(handle);
 		onReady?.(handle);
