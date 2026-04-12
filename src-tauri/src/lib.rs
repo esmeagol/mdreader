@@ -22,7 +22,7 @@ fn save_image(path: String, bytes: Vec<u8>) -> Result<String, String> {
 }
 
 fn save_file_impl(state: &AppState, content: String) -> Result<(), String> {
-    let path = state.current_file.lock().unwrap().clone();
+    let path = state.current_file.lock().unwrap_or_else(|e| e.into_inner()).clone();
     match path {
         Some(path) => write_markdown_file(&path, &content),
         None => Err("No file is currently open".to_string()),
@@ -36,13 +36,13 @@ fn open_file(
     path: String,
 ) -> Result<String, String> {
     let content = read_markdown_file(&path)?;
-    *state.current_file.lock().unwrap() = Some(path.clone());
+    *state.current_file.lock().unwrap_or_else(|e| e.into_inner()) = Some(path.clone());
     let app_data_dir = app
         .path()
         .app_data_dir()
         .map_err(|e| format!("Failed to resolve app data directory: {e}"))?;
     std::fs::create_dir_all(&app_data_dir).ok();
-    let mut rf = state.recent_files.lock().unwrap();
+    let mut rf = state.recent_files.lock().unwrap_or_else(|e| e.into_inner());
     rf.add(&path);
     let _ = rf.save(&app_data_dir);
     // Grant asset protocol access to the directory containing this file so
@@ -52,7 +52,9 @@ fn open_file(
     // ~/Library/CloudStorage) cause a pattern mismatch and a 403/404.
     if let Some(dir) = std::path::Path::new(&path).parent() {
         let canonical = std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
-        let _ = app.asset_protocol_scope().allow_directory(&canonical, false);
+        let _ = app
+            .asset_protocol_scope()
+            .allow_directory(&canonical, false);
     }
     Ok(content)
 }
@@ -64,12 +66,12 @@ fn save_file(state: tauri::State<'_, AppState>, content: String) -> Result<(), S
 
 #[tauri::command]
 fn set_current_file(state: tauri::State<'_, AppState>, path: String) {
-    *state.current_file.lock().unwrap() = Some(path);
+    *state.current_file.lock().unwrap_or_else(|e| e.into_inner()) = Some(path);
 }
 
 #[tauri::command]
 fn get_recent_files(state: tauri::State<'_, AppState>) -> Vec<String> {
-    state.recent_files.lock().unwrap().list().to_vec()
+    state.recent_files.lock().unwrap_or_else(|e| e.into_inner()).list().to_vec()
 }
 
 #[cfg(test)]
