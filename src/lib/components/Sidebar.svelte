@@ -51,10 +51,14 @@
 				activeSlug = slug;
 			};
 
+			let rafId = 0;
 			observer = new IntersectionObserver(
 				(entries) => {
 					for (const e of entries) ratios.set(e.target, e.intersectionRatio);
-					applyActive();
+					// Debounce via rAF: coalesce multiple threshold crossings in the same
+					// scroll frame into a single applyActive() call.
+					cancelAnimationFrame(rafId);
+					rafId = requestAnimationFrame(applyActive);
 				},
 				{ root, threshold: [0, 0.25, 0.5, 0.75, 1] }
 			);
