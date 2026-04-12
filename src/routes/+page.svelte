@@ -93,7 +93,7 @@
 	}
 
 	onMount(() => {
-		void loadRecentFiles();
+		loadRecentFiles().catch((err) => console.warn('[mdreader] Failed to load recent files:', err));
 
 		let isSaving = false;
 		const intervalId = window.setInterval(() => {
