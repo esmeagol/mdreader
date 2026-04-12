@@ -109,11 +109,19 @@
 		let unlisten: (() => void) | undefined;
 		if (isTauriRuntime()) {
 			void (async () => {
-				const [{ ask }, { getCurrentWindow }, { installTauriAppMenu }] = await Promise.all([
-					import('@tauri-apps/plugin-dialog'),
-					import('@tauri-apps/api/window'),
-					import('$lib/tauriAppMenu')
-				]);
+				let ask: (typeof import('@tauri-apps/plugin-dialog'))['ask'];
+				let getCurrentWindow: (typeof import('@tauri-apps/api/window'))['getCurrentWindow'];
+				let installTauriAppMenu: (typeof import('$lib/tauriAppMenu'))['installTauriAppMenu'];
+				try {
+					[{ ask }, { getCurrentWindow }, { installTauriAppMenu }] = await Promise.all([
+						import('@tauri-apps/plugin-dialog'),
+						import('@tauri-apps/api/window'),
+						import('$lib/tauriAppMenu')
+					]);
+				} catch {
+					/* Dynamic imports failed — likely running outside full Tauri context. */
+					return;
+				}
 				try {
 					await installTauriAppMenu({
 						newFile: () => newFile(),
