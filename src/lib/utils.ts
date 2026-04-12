@@ -19,4 +19,3 @@ export function formatTitle(filePath: string | null, isDirty: boolean): string {
 	const base = documentDisplayName(filePath);
 	return isDirty ? `• ${base} — mdreader` : `${base} — mdreader`;
 }
-

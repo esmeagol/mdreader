@@ -7,6 +7,7 @@ function mockHandlers(): AppMenuHandlers {
 		openFile: vi.fn().mockResolvedValue(undefined),
 		save: vi.fn().mockResolvedValue(undefined),
 		saveAs: vi.fn().mockResolvedValue(undefined),
+		toggleAutoSave: vi.fn(),
 		toggleSourceMode: vi.fn(),
 		toggleSidebar: vi.fn(),
 		toggleDistractionFree: vi.fn(),
@@ -34,6 +35,12 @@ describe('dispatchAppMenuAction', () => {
 		dispatchAppMenuAction(APP_MENU.FileSaveAs, h);
 		expect(h.save).toHaveBeenCalledOnce();
 		expect(h.saveAs).toHaveBeenCalledOnce();
+	});
+
+	it('invokes toggleAutoSave for FileToggleAutoSave id', () => {
+		const h = mockHandlers();
+		dispatchAppMenuAction(APP_MENU.FileToggleAutoSave, h);
+		expect(h.toggleAutoSave).toHaveBeenCalledOnce();
 	});
 
 	it('invokes view toggles', () => {

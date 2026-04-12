@@ -36,7 +36,7 @@
 	 *  The `block-active` class (added by the SourceOnFocus decoration plugin) triggers CSS
 	 *  that shows the prefix and collapses the heading font to body size. */
 	function makeHeadingNodeView(level: 1 | 2 | 3): NodeViewRenderer {
-		return ({ node }) => {
+		return ({ node: _node }) => {
 			const dom = document.createElement(`h${level}`);
 
 			const prefix = document.createElement('span');
@@ -53,9 +53,7 @@
 				dom,
 				contentDOM,
 				update(updatedNode) {
-					return (
-						updatedNode.type.name === 'heading' && updatedNode.attrs.level === level
-					);
+					return updatedNode.type.name === 'heading' && updatedNode.attrs.level === level;
 				}
 			};
 		};
@@ -204,9 +202,7 @@
 				editor.view.dispatch(tr.setMeta(MARK_CLEAN_KEY, true));
 			},
 			setSearchTerm(term: string) {
-				editor.view.dispatch(
-					editor.state.tr.setMeta(searchHighlightKey, { term, current: -1 })
-				);
+				editor.view.dispatch(editor.state.tr.setMeta(searchHighlightKey, { term, current: -1 }));
 			},
 			setReplaceTerm(term: string) {
 				replaceTerm = term;
@@ -238,12 +234,11 @@
 				const pluginState = searchHighlightKey.getState(editor.state);
 				if (!pluginState || pluginState.current < 0 || !pluginState.matches.length) return;
 				const match = pluginState.matches[pluginState.current];
-				editor.view
-					.dispatch(
-						editor.state.tr
-							.replaceWith(match.from, match.to, editor.state.schema.text(replaceTerm))
-							.setMeta(searchHighlightKey, { current: pluginState.current })
-					);
+				editor.view.dispatch(
+					editor.state.tr
+						.replaceWith(match.from, match.to, editor.state.schema.text(replaceTerm))
+						.setMeta(searchHighlightKey, { current: pluginState.current })
+				);
 			},
 			replaceAll() {
 				if (!replaceTerm && replaceTerm !== '') return;
