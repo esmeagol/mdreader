@@ -12,7 +12,7 @@ pub struct AppState {
 }
 
 fn save_image_impl(path: &str, bytes: Vec<u8>) -> Result<String, String> {
-    std::fs::write(path, &bytes).map_err(|e| e.to_string())?;
+    std::fs::write(path, &bytes).map_err(|e| format!("Failed to write image to {path}: {e}"))?;
     Ok(path.to_string())
 }
 
@@ -37,15 +37,22 @@ fn open_file(
 ) -> Result<String, String> {
     let content = read_markdown_file(&path)?;
     *state.current_file.lock().unwrap() = Some(path.clone());
-    let app_data_dir = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let app_data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Failed to resolve app data directory: {e}"))?;
     std::fs::create_dir_all(&app_data_dir).ok();
     let mut rf = state.recent_files.lock().unwrap();
     rf.add(&path);
     let _ = rf.save(&app_data_dir);
     // Grant asset protocol access to the directory containing this file so
     // relative image references (e.g. Redis1.png) can be served.
+    // Canonicalize so the stored pattern matches after Tauri's own canonicalize
+    // call in is_allowed() — without this, symlink components (e.g. inside
+    // ~/Library/CloudStorage) cause a pattern mismatch and a 403/404.
     if let Some(dir) = std::path::Path::new(&path).parent() {
-        let _ = app.asset_protocol_scope().allow_directory(dir, false);
+        let canonical = std::fs::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
+        let _ = app.asset_protocol_scope().allow_directory(&canonical, false);
     }
     Ok(content)
 }
