@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use std::path::Path;
 
+// Must stay in sync with MAX_RECENT in src/lib/stores/recentFiles.ts (JS store trims to the
+// same cap so the sidebar list and the on-disk list never disagree).
 const MAX_RECENT: usize = 10;
 
 #[derive(Serialize, Deserialize, Clone, Default)]
@@ -19,12 +21,12 @@ impl RecentFiles {
         &self.paths
     }
 
-    pub fn save(&self, dir: &PathBuf) -> Result<(), String> {
+    pub fn save(&self, dir: &Path) -> Result<(), String> {
         let json = serde_json::to_string(self).map_err(|e| e.to_string())?;
         std::fs::write(dir.join("recent_files.json"), json).map_err(|e| e.to_string())
     }
 
-    pub fn load(dir: &PathBuf) -> Self {
+    pub fn load(dir: &Path) -> Self {
         std::fs::read_to_string(dir.join("recent_files.json"))
             .ok()
             .and_then(|s| serde_json::from_str(&s).ok())
