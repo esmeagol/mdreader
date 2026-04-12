@@ -26,16 +26,19 @@ src/
     ├── components/
     │   ├── AppShell.svelte        # Grid owner — exposes named snippet slots
     │   ├── Sidebar.svelte         # Outline panel — reads headings store
+    │   ├── RecentFiles.svelte     # Recent-file list rendered inside Sidebar
     │   ├── Toolbar.svelte         # Formatting strip — empty slot initially
     │   ├── EditorContainer.svelte # Mode coordinator (rich ↔ source); owns handle refs
     │   ├── EditorPane.svelte      # TipTap — mounts PM plugins, exposes EditorHandle
+    │   ├── FindBar.svelte         # Find / replace UI bar; shown/hidden by EditorContainer
     │   ├── SourcePane.svelte      # CodeMirror — exposes EditorHandle
     │   └── StatusBar.svelte       # Word count, file info — reads stores
     ├── stores/
     │   ├── document.ts            # File metadata only: filePath, isDirty, lastSaved, saveError
     │   ├── headings.ts            # Heading list derived by PM plugin; read by Sidebar
     │   ├── wordCount.ts           # Word count derived by PM plugin; read by StatusBar
-    │   └── recentFiles.ts         # Recent paths; hydrated from Tauri on mount
+    │   ├── recentFiles.ts         # Recent paths; hydrated from Tauri on mount
+    │   └── themePreference.ts     # light/dark/system preference; persisted to localStorage
     ├── editor.ts                  # EditorHandle interface + module-level singletons
     ├── fileService.ts             # All Tauri file I/O (open, save, saveAs, newFile)
     ├── tauriAppMenu.ts            # Native menu (Tauri 2 Menu API); installTauriAppMenu
@@ -43,6 +46,8 @@ src/
     ├── markdown.ts                # getMarkdown(editor) — shared serializer for app + tests
     ├── DirtyState.ts              # TipTap extension: tracks dirty via PM doc.eq()
     ├── Headings.ts                # TipTap extension: extracts headings + stamps heading IDs
+    ├── SearchHighlight.ts         # TipTap extension: find/replace highlights + navigation
+    ├── SourceOnFocus.ts           # TipTap extension: marks active block with block-active class
     ├── WordCount.ts               # TipTap extension: counts words from PM doc
     └── utils.ts                   # Pure functions (formatWordCount, formatTitle, etc.)
 ```
@@ -58,6 +63,7 @@ src/
             ├── [sidebar]   → Sidebar
             ├── [toolbar]   → Toolbar
             ├── [editor]    → EditorContainer  (owns: richHandle, sourceHandle refs)
+            │                     ├── FindBar      (shown when showFindBar=true)
             │                     ├── EditorPane   (always mounted; hidden in source mode)
             │                     └── SourcePane   (always mounted; hidden in rich mode)
             └── [statusbar] → StatusBar
@@ -328,13 +334,15 @@ always returns content from the visible pane.
 
 There is no `ui` store. Each piece of UI state lives as close to its owner as possible.
 
-| State               | Owner            | Shared via                              |
-| ------------------- | ---------------- | --------------------------------------- |
-| `sidebarVisible`    | `+page.svelte`   | Prop to AppShell                        |
-| `isDistractionFree` | `+page.svelte`   | Prop to AppShell                        |
-| `editorMode`        | `+page.svelte`   | Prop to EditorContainer                 |
-| `theme`             | `+layout.svelte` | `data-theme` on `<html>` — CSS cascades |
-| `fontSize`          | `+page.svelte`   | CSS variable on `<html>` — CSS cascades |
+| State               | Owner                  | Shared via                                              |
+| ------------------- | ---------------------- | ------------------------------------------------------- |
+| `sidebarVisible`    | `+page.svelte`         | Prop to AppShell                                        |
+| `isDistractionFree` | `+page.svelte`         | Prop to AppShell                                        |
+| `editorMode`        | `+page.svelte`         | Prop to EditorContainer                                 |
+| `showFindBar`       | `+page.svelte`         | Prop to EditorContainer                                 |
+| `autoSave`          | `+page.svelte`         | Checked inside the 30s interval closure                 |
+| `themePreference`   | `themePreference.ts`   | Store; `+layout.svelte` applies `data-theme` to `<html>` |
+| `fontSize`          | `+page.svelte`         | CSS variable on `<html>` — CSS cascades                 |
 
 ---
 
@@ -345,12 +353,15 @@ functions and calls them directly — no arguments needed because file content i
 from the active editor handle.
 
 ```typescript
-// Open: push content to both handles, then update store metadata
+// Open: update store metadata FIRST, then push content to editors.
+// The image NodeView reads doc.filePath at render time to resolve relative src
+// paths to asset:// URLs. doc.load() must run before setContent() or the NodeView
+// fires before the path is set and images 404.
 export async function openFile(path?: string): Promise<void> {
 	const content = await invoke<string>('open_file', { path: selected });
+	doc.load(selected);
 	getRichHandle()?.setContent(content, { markClean: true });
 	getSourceHandle()?.setContent(content);
-	doc.load(selected);
 }
 
 // Save: read from active handle, write to Rust
@@ -368,8 +379,9 @@ export function newFile(): void {
 }
 ```
 
-The pattern on file open is always: **push content to editors first, then update store**. This
-ensures handles are populated before any reactive effects fire in response to store changes.
+**Invariant:** on file open, `doc.load(path)` runs **before** `setContent()`. The image
+NodeView reads `doc.filePath` at node-render time — if the store update comes after, relative
+image `src` attributes cannot be resolved to `asset://` URLs and images 404.
 
 `markClean: true` is passed only on genuine file loads and saves — not on mode-switch syncs.
 This distinction is critical: it tells the `DirtyState` plugin to reset its clean baseline.

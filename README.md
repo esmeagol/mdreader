@@ -7,10 +7,11 @@ A native macOS markdown editor built with Tauri 2, Svelte 5, and TipTap. Edits r
 - **Rich editing** — headings, bold, italic, strikethrough, inline code, blockquotes, task lists, tables, and fenced code blocks with syntax highlighting
 - **Source mode** — toggle to raw markdown with `Cmd+/`; edits sync back to rich mode
 - **File I/O** — open `.md` files with `Cmd+O`, save with `Cmd+S`, save to a new path with `Cmd+Shift+S`
-- **Auto-save** — dirty files are saved automatically every 30 seconds
+- **Auto-save** — opt-in via File › Auto Save (default off); saves every 30 seconds when enabled
 - **Quit protection** — native dialog prompts when closing with unsaved changes
-- **Dark mode** — follows macOS system appearance automatically
+- **Dark mode** — follows system by default; cycle with `Cmd+Shift+T` (light → dark → system); preference persists across restarts
 - **Distraction-free mode** — `Cmd+Shift+F` hides the sidebar and status bar
+- **Find & Replace** — `Cmd+F` to find, `Cmd+H` to find and replace
 - **Font size** — `Cmd+=` / `Cmd+-` to scale editor text
 - **Word count** — live count in the status bar
 - **External links** — clicked links open in the default browser, not the app window
@@ -26,7 +27,10 @@ A native macOS markdown editor built with Tauri 2, Svelte 5, and TipTap. Edits r
 | `Cmd+/`           | Toggle source mode            |
 | `Cmd+Shift+F`     | Toggle distraction-free mode  |
 | `Cmd+Shift+L`     | Toggle sidebar                |
+| `Cmd+Shift+T`     | Cycle theme (light/dark/system) |
 | `Cmd+=` / `Cmd+-` | Increase / decrease font size |
+| `Cmd+F`           | Find                          |
+| `Cmd+H`           | Find and replace              |
 
 ## Tech Stack
 
