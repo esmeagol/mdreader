@@ -13,11 +13,14 @@ export const APP_MENU = {
 
 export type AppMenuActionId = (typeof APP_MENU)[keyof typeof APP_MENU];
 
+// All handlers are fire-and-forget from the menu's perspective — the native menu
+// callback cannot await, so async handlers must be wrapped in void at the call site.
+// Typed as () => void so the interface honestly reflects how they are consumed here.
 export interface AppMenuHandlers {
 	newFile: () => void;
-	openFile: () => Promise<void>;
-	save: () => Promise<void>;
-	saveAs: () => Promise<void>;
+	openFile: () => void;
+	save: () => void;
+	saveAs: () => void;
 	toggleAutoSave: () => void;
 	toggleSourceMode: () => void;
 	toggleSidebar: () => void;
@@ -32,13 +35,13 @@ export function dispatchAppMenuAction(id: string, handlers: AppMenuHandlers): vo
 			handlers.newFile();
 			return;
 		case APP_MENU.FileOpen:
-			void handlers.openFile();
+			handlers.openFile();
 			return;
 		case APP_MENU.FileSave:
-			void handlers.save();
+			handlers.save();
 			return;
 		case APP_MENU.FileSaveAs:
-			void handlers.saveAs();
+			handlers.saveAs();
 			return;
 		case APP_MENU.FileToggleAutoSave:
 			handlers.toggleAutoSave();
