@@ -51,6 +51,10 @@ test('image markdown renders as img element', async ({ page }) => {
 
 // The NodeView resolves relative src to asset:// at render time using the open file path.
 // The ProseMirror model keeps the original "Redis1.png" so source mode and saving are clean.
+//
+// NOTE: these tests run in a plain Chromium browser (no Tauri). They verify that the NodeView
+// constructs the correct asset:// URL string. Whether that URL actually serves the image is a
+// Tauri runtime concern and is not tested here — that requires a full packaged app.
 test('relative image src is resolved to asset:// in the rendered img element', async ({ page }) => {
 	await page.goto('/');
 
@@ -67,7 +71,8 @@ test('relative image src is resolved to asset:// in the rendered img element', a
 	expect(src).toBe(expected);
 });
 
-// Spaces in directory names must be encoded so the WebView URL is valid
+// Spaces in directory names must be percent-encoded so the WebView URL is valid.
+// Same non-Tauri caveat as above — tests URL string construction only.
 test('NodeView encodes spaces in path when resolving to asset:// URL', async ({ page }) => {
 	await page.goto('/');
 
