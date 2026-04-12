@@ -1,12 +1,11 @@
 <script lang="ts">
 	import { recentFiles } from '$lib/stores/recentFiles';
+	import { documentDisplayName } from '$lib/utils';
 
 	interface Props {
 		onOpenFile: (path: string) => void;
 	}
 	let { onOpenFile }: Props = $props();
-
-	const displayName = (p: string) => p.split('/').pop() ?? p;
 </script>
 
 {#if $recentFiles.length > 0}
@@ -14,7 +13,7 @@
 		<p class="label">Recent</p>
 		{#each $recentFiles as path (path)}
 			<button class="item" onclick={() => onOpenFile(path)} title={path}>
-				{displayName(path)}
+				{documentDisplayName(path)}
 			</button>
 		{/each}
 	</section>
