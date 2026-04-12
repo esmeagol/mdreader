@@ -30,6 +30,8 @@
 			: 'light') as 'light' | 'dark'
 	);
 
+	// Shortcuts defined here must stay in sync with the accelerator strings in
+	// src/lib/tauriAppMenu.ts, which registers the same shortcuts in the native menu.
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.metaKey && !e.shiftKey) {
 			if (e.key === 'o') {

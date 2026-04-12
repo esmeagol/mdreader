@@ -4,6 +4,10 @@ import { APP_MENU, dispatchAppMenuAction, type AppMenuHandlers } from './appMenu
 /**
  * Installs the desktop app menu (macOS menu bar / Win+Linux window menu).
  * Call only inside Tauri; no-ops are handled by the caller.
+ *
+ * Keyboard shortcuts defined here (accelerator strings) must stay in sync
+ * with the handleKeydown() function in src/routes/+page.svelte, which handles
+ * the same shortcuts for the browser/web context.
  */
 export async function installTauriAppMenu(handlers: AppMenuHandlers): Promise<void> {
 	const onAction = (id: string) => dispatchAppMenuAction(id, handlers);
