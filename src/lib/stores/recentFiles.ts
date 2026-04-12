@@ -1,5 +1,7 @@
 import { writable, get as getStore } from 'svelte/store';
 
+// Must stay in sync with MAX_RECENT in src-tauri/src/recent_files.rs (Rust trims
+// the on-disk list to the same cap so the sidebar and the JSON file never disagree).
 const MAX_RECENT = 10;
 
 function createRecentFilesStore() {
