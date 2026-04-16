@@ -13,8 +13,13 @@
 		onCloseFindBar?: () => void;
 	}
 
-	let { editorMode, theme, showFindBar = false, showReplace = false, onCloseFindBar }: Props =
-		$props();
+	let {
+		editorMode,
+		theme,
+		showFindBar = false,
+		showReplace = false,
+		onCloseFindBar
+	}: Props = $props();
 
 	let richHandle: EditorHandle | null = $state(null);
 	let sourceHandle: EditorHandle | null = $state(null);

@@ -17,13 +17,13 @@
 
 ## Screenshots
 
- ### Light theme
+### Light theme
 
 <img src="docs/light.png" alt="mdreader in light mode" width="100%" />
 
- ### Dark Theme
+### Dark Theme
 
-<img src="docs/dark.png" alt="mdreader in dark mode" width="100%" /> 
+<img src="docs/dark.png" alt="mdreader in dark mode" width="100%" />
 
 ---
 
@@ -35,20 +35,20 @@ mdreader is a minimal, distraction-free markdown editor for macOS. It uses TipTa
 
 ## Features
 
-| | |
-|---|---|
-| **In-place rendering** | Markdown renders as you type — no preview pane required |
-| **Source mode** | Toggle raw markdown with `Cmd+/`; edits sync back to rich mode |
-| **Syntax highlighting** | Fenced code blocks highlighted via highlight.js |
-| **Find & Replace** | `Cmd+F` to find, `Cmd+H` to replace |
-| **Auto-save** | Opt-in via File › Auto Save; saves every 30 seconds |
-| **Dark mode** | Follows system; cycle with `Cmd+Shift+T` — persists across restarts |
-| **Distraction-free** | `Cmd+Shift+F` hides sidebar and status bar |
-| **Quit protection** | Native dialog when closing with unsaved changes |
-| **Font scaling** | `Cmd+=` / `Cmd+-` to resize editor text |
-| **Word count** | Live count in the status bar |
-| **Recent files** | Sidebar lists recently opened files |
-| **External links** | Clicked links open in your default browser |
+|                         |                                                                     |
+| ----------------------- | ------------------------------------------------------------------- |
+| **In-place rendering**  | Markdown renders as you type — no preview pane required             |
+| **Source mode**         | Toggle raw markdown with `Cmd+/`; edits sync back to rich mode      |
+| **Syntax highlighting** | Fenced code blocks highlighted via highlight.js                     |
+| **Find & Replace**      | `Cmd+F` to find, `Cmd+H` to replace                                 |
+| **Auto-save**           | Opt-in via File › Auto Save; saves every 30 seconds                 |
+| **Dark mode**           | Follows system; cycle with `Cmd+Shift+T` — persists across restarts |
+| **Distraction-free**    | `Cmd+Shift+F` hides sidebar and status bar                          |
+| **Quit protection**     | Native dialog when closing with unsaved changes                     |
+| **Font scaling**        | `Cmd+=` / `Cmd+-` to resize editor text                             |
+| **Word count**          | Live count in the status bar                                        |
+| **Recent files**        | Sidebar lists recently opened files                                 |
+| **External links**      | Clicked links open in your default browser                          |
 
 ### Supported markdown
 
@@ -58,32 +58,32 @@ Headings · Bold · Italic · Strikethrough · Inline code · Blockquotes · Ord
 
 ## Keyboard shortcuts
 
-| Shortcut | Action |
-|---|---|
-| `Cmd+O` | Open file |
-| `Cmd+S` | Save |
-| `Cmd+Shift+S` | Save as |
-| `Cmd+N` | New file |
-| `Cmd+/` | Toggle source mode |
-| `Cmd+Shift+F` | Toggle distraction-free mode |
-| `Cmd+Shift+L` | Toggle sidebar |
-| `Cmd+Shift+T` | Cycle theme (light → dark → system) |
-| `Cmd+=` / `Cmd+-` | Increase / decrease font size |
-| `Cmd+F` | Find |
-| `Cmd+H` | Find and replace |
+| Shortcut          | Action                              |
+| ----------------- | ----------------------------------- |
+| `Cmd+O`           | Open file                           |
+| `Cmd+S`           | Save                                |
+| `Cmd+Shift+S`     | Save as                             |
+| `Cmd+N`           | New file                            |
+| `Cmd+/`           | Toggle source mode                  |
+| `Cmd+Shift+F`     | Toggle distraction-free mode        |
+| `Cmd+Shift+L`     | Toggle sidebar                      |
+| `Cmd+Shift+T`     | Cycle theme (light → dark → system) |
+| `Cmd+=` / `Cmd+-` | Increase / decrease font size       |
+| `Cmd+F`           | Find                                |
+| `Cmd+H`           | Find and replace                    |
 
 ---
 
 ## Tech stack
 
-| Layer | Technology |
-|---|---|
-| Native shell & file I/O | [Tauri 2](https://tauri.app) (Rust) |
-| UI | [Svelte 5](https://svelte.dev) with runes reactivity |
-| Rich editor | [TipTap 2](https://tiptap.dev) (ProseMirror) |
-| Source editor | [CodeMirror 6](https://codemirror.net) |
-| Markdown serialization | [tiptap-markdown](https://github.com/aguingand/tiptap-markdown) |
-| Syntax highlighting | [highlight.js](https://highlightjs.org) |
+| Layer                   | Technology                                                      |
+| ----------------------- | --------------------------------------------------------------- |
+| Native shell & file I/O | [Tauri 2](https://tauri.app) (Rust)                             |
+| UI                      | [Svelte 5](https://svelte.dev) with runes reactivity            |
+| Rich editor             | [TipTap 2](https://tiptap.dev) (ProseMirror)                    |
+| Source editor           | [CodeMirror 6](https://codemirror.net)                          |
+| Markdown serialization  | [tiptap-markdown](https://github.com/aguingand/tiptap-markdown) |
+| Syntax highlighting     | [highlight.js](https://highlightjs.org)                         |
 
 ---
 

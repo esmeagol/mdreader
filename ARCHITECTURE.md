@@ -334,15 +334,15 @@ always returns content from the visible pane.
 
 There is no `ui` store. Each piece of UI state lives as close to its owner as possible.
 
-| State               | Owner                  | Shared via                                              |
-| ------------------- | ---------------------- | ------------------------------------------------------- |
-| `sidebarVisible`    | `+page.svelte`         | Prop to AppShell                                        |
-| `isDistractionFree` | `+page.svelte`         | Prop to AppShell                                        |
-| `editorMode`        | `+page.svelte`         | Prop to EditorContainer                                 |
-| `showFindBar`       | `+page.svelte`         | Prop to EditorContainer                                 |
-| `autoSave`          | `+page.svelte`         | Checked inside the 30s interval closure                 |
-| `themePreference`   | `themePreference.ts`   | Store; `+layout.svelte` applies `data-theme` to `<html>` |
-| `fontSize`          | `+page.svelte`         | CSS variable on `<html>` — CSS cascades                 |
+| State               | Owner                | Shared via                                               |
+| ------------------- | -------------------- | -------------------------------------------------------- |
+| `sidebarVisible`    | `+page.svelte`       | Prop to AppShell                                         |
+| `isDistractionFree` | `+page.svelte`       | Prop to AppShell                                         |
+| `editorMode`        | `+page.svelte`       | Prop to EditorContainer                                  |
+| `showFindBar`       | `+page.svelte`       | Prop to EditorContainer                                  |
+| `autoSave`          | `+page.svelte`       | Checked inside the 30s interval closure                  |
+| `themePreference`   | `themePreference.ts` | Store; `+layout.svelte` applies `data-theme` to `<html>` |
+| `fontSize`          | `+page.svelte`       | CSS variable on `<html>` — CSS cascades                  |
 
 ---
 
