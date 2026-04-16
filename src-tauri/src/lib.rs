@@ -22,7 +22,11 @@ fn save_image(path: String, bytes: Vec<u8>) -> Result<String, String> {
 }
 
 fn save_file_impl(state: &AppState, content: String) -> Result<(), String> {
-    let path = state.current_file.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    let path = state
+        .current_file
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone();
     match path {
         Some(path) => write_markdown_file(&path, &content),
         None => Err("No file is currently open".to_string()),
@@ -71,7 +75,12 @@ fn set_current_file(state: tauri::State<'_, AppState>, path: String) {
 
 #[tauri::command]
 fn get_recent_files(state: tauri::State<'_, AppState>) -> Vec<String> {
-    state.recent_files.lock().unwrap_or_else(|e| e.into_inner()).list().to_vec()
+    state
+        .recent_files
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .list()
+        .to_vec()
 }
 
 #[cfg(test)]
